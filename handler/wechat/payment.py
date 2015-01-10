@@ -7,7 +7,7 @@ import tornado.gen
 import tornado.httpclient
 
 import consts.err_code as err
-from consts.key import newbuy_apikey
+from consts.key import magento_sitekey
 from handler.wechat.common import WechatCommonHandler
 from util import dtools
 from util import security
@@ -36,7 +36,7 @@ class WechatPayHandler(WechatCommonHandler):
                 'nonce_str': security.nonce_str(),
             }
         )
-        data['sign'] = security.build_signature(data, newbuy_apikey)
+        data['sign'] = security.build_signature(data, magento_sitekey)
         client = tornado.httpclient.AsyncHTTPClient()
         req = tornado.httpclient.HTTPRequest(
             url='http://121.40.32.246/newbuy/newbuy_order/index/wechatPayment',  # TODO: from db

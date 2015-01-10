@@ -19,7 +19,7 @@ define("port", default=33600, help="run on the given port", type=int)
 application = tornado.web.Application(
     handlers=[
         (r'/notify/messages', WechatMsgHandler),
-        (r'/notify/payment', WechatPayHandler, dict(sign_check=False, sign_key=newbuy_apikey)),
+        (r'/notify/payment', WechatPayHandler, dict(sign_check=True, sign_key=newbuy_apikey)),
         (r'/site/orders', OrderHandler, dict(sign_check=False, sign_key=magento_sitekey))
     ], debug=True
 )
