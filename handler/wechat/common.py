@@ -5,11 +5,10 @@ from pyexpat import ExpatError
 import tornado.gen
 from tornado.web import HTTPError
 
-from handler.base import BaseHandler
-
 from util import security
 from util import dtools
 from consts import err_code as err
+from handler.base import BaseHandler
 
 
 class WechatCommonHandler(BaseHandler):
@@ -32,8 +31,8 @@ class WechatCommonHandler(BaseHandler):
     def send_response(self, data=None, err_code=0, err_msg=''):
         if not data:
             data = {}
-        data['return_code'] = err.simple_map.get(err_code) or 'FAIL'
-        data['return_msg'] = err.simple_map.get(err_code) or 'ERROR'
+        data['return_code'] = err.simple_map.get(err_code, ('FAIL', 'ERROR'))[0]
+        data['return_msg'] = err.simple_map.get(err_code, ('FAIL', 'ERROR'))[1]
         self.write(dtools.dict2xml(data))
         self.finish()
 

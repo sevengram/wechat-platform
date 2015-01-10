@@ -4,8 +4,8 @@ from util import xmltodict
 
 
 def transfer(src, copys, renames=None):
-    r1 = {key: src[key] for key in copys}
-    r2 = {new_key: src[key] for key, new_key in renames} if renames else {}
+    r1 = {key: src.get(key, '') for key in copys}
+    r2 = {new_key: src.get(key, '') for key, new_key in renames} if renames else {}
     return dict(r1, **r2)
 
 

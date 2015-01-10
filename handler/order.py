@@ -1,18 +1,16 @@
 # -*- coding:utf8 -*-
-import sys
 import time
 
 import tornado.web
 import tornado.gen
 import tornado.httpclient
 
-from consts.key import newbuy_apikey
-
 from util import security
 from util import dtools
 from base import BaseHandler
 from consts import url
 from consts import err_code as err
+from consts.key import newbuy_apikey
 
 
 class OrderHandler(BaseHandler):
@@ -52,7 +50,7 @@ class OrderHandler(BaseHandler):
                 'mch_id': '10010984',  # TODO: from db
                 'nonce_str': security.nonce_str(),
                 'openid': 'oIvjEs_zh_VFqnFfiXkXBUyxsdMY',  # TODO: search by unionId from db
-                'notify_url': 'http://www.omojs.com/test/',  # TODO
+                'notify_url': 'http://uri/notify/payment/',  # TODO
                 'attach': '',  # TODO
             }
         )
@@ -63,7 +61,11 @@ class OrderHandler(BaseHandler):
             method='POST',
             body=dtools.dict2xml(data)
         )
-        resp = yield client.fetch(req)
+        try:
+            resp = yield client.fetch(req)
+        except tornado.httpclient.HTTPError:
+            self.send_response(err_code=1001)
+            return
         if resp.code == 200:
             resp_data = dtools.xml2dict(resp.body)
             if resp_data['return_code'].lower() == 'success':
@@ -79,7 +81,7 @@ class OrderHandler(BaseHandler):
                         post_resp_data['sign'] = security.build_signature(post_resp_data, newbuy_apikey)
                         self.send_response(post_resp_data)
                     else:
-                        self.send_response(err_code=err.alias_map.get(resp_data['err_code'], 9001),
+                        self.send_response(err_code=err.alias_map.get(resp_data.get('err_code'), 9001),
                                            err_msg=resp_data.get('err_code_des'))
                 else:
                     self.send_response(err_code=1002)
@@ -87,5 +89,4 @@ class OrderHandler(BaseHandler):
                 self.send_response(err_code=1001, err_msg=resp_data['return_msg'])
         else:
             self.send_response(err_code=1001, err_msg='wechat %d' % resp.code)
-        sys.stdout.flush()
 

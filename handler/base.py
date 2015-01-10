@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
+import sys
 
 import tornado.web
 import tornado.gen
 
-from consts import err_code as err
 from util import security
+from consts import err_code as err
 
 
 class BaseHandler(tornado.web.RequestHandler):
@@ -41,7 +42,9 @@ class BaseHandler(tornado.web.RequestHandler):
              'err_msg': err_msg or err.code_map[err_code][1],
              'data': data or ''})
         self.finish()
+        sys.stdout.flush()
 
     def write_error(self, status_code, **kwargs):
         self.write({'err_code': status_code})
+        sys.stdout.flush()
 
