@@ -9,20 +9,14 @@ from consts import err_code as err
 
 
 class BaseHandler(tornado.web.RequestHandler):
-    def initialize(self, sign_check=False, sign_key=''):
+    def initialize(self, sign_check=False):
         self.sign_check = sign_check
-        self.sign_key = sign_key
 
     @tornado.gen.coroutine
-    def post(self, *args, **kwargs):
-        if self.sign_check and self.sign_key and not security.check_signature(self.request.arguments, self.sign_key):
-            self.send_response(err_code=8001)
-            raise tornado.gen.Return(True)
-        else:
-            raise tornado.gen.Return(False)
-
     def prepare(self):
-        pass
+        if self.sign_check:
+            req_args = {k: v[0] for k, v in self.request.arguments.iteritems() if v}
+            self.check_signature(req_args)
 
     def assign_arguments(self, essential, extra):
         try:
@@ -38,8 +32,8 @@ class BaseHandler(tornado.web.RequestHandler):
     def send_response(self, data=None, err_code=0, err_msg=''):
         self.write(
             {'err_code': err_code,
-             'err_alias': err.code_map[err_code][0],
-             'err_msg': err_msg or err.code_map[err_code][1],
+             'err_alias': err.code_map.get(err_code)[0],
+             'err_msg': err_msg or err.code_map.get(err_code)[1],
              'data': data or ''})
         self.finish()
         sys.stdout.flush()
@@ -48,3 +42,12 @@ class BaseHandler(tornado.web.RequestHandler):
         self.write({'err_code': status_code})
         sys.stdout.flush()
 
+    def check_signature(self, refer_dict):
+        sign_key = self.get_check_key(refer_dict)
+        if not sign_key:
+            self.send_response(err_code=8002)
+        if not security.check_sign(refer_dict, sign_key):
+            self.send_response(err_code=8001)
+
+    def get_check_key(self, refer_dict):
+        raise NotImplementedError()

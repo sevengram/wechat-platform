@@ -7,9 +7,7 @@ import tornado.ioloop
 import tornado.options
 from tornado.options import define, options
 
-from consts.key import newbuy_apikey, magento_sitekey
-
-from handler.order import OrderHandler
+import handler.order as order
 from handler.wechat.message import WechatMsgHandler
 from handler.wechat.payment import WechatPayHandler
 
@@ -19,8 +17,9 @@ define("port", default=33600, help="run on the given port", type=int)
 application = tornado.web.Application(
     handlers=[
         (r'/notify/messages', WechatMsgHandler),
-        (r'/notify/payment', WechatPayHandler, dict(sign_check=False, sign_key=newbuy_apikey)),
-        (r'/site/orders', OrderHandler, dict(sign_check=False, sign_key=magento_sitekey))
+        (r'/notify/payment', WechatPayHandler, dict(sign_check=True)),
+        (r'/site/orders', order.PrepayHandler, dict(sign_check=False)),
+        (r'/site/orders/(\w+)', order.OrderHandler, dict(sign_check=False))
     ], debug=True
 )
 
