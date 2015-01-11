@@ -3,36 +3,31 @@
 from pyexpat import ExpatError
 
 import tornado.gen
-from tornado.web import HTTPError
+import tornado.web
 
-from util import security
 from util import dtools
 from consts import err_code as err
 from handler.base import BaseHandler
 
 
 class WechatCommonHandler(BaseHandler):
-    def initialize(self, sign_check=False, sign_key=''):
-        super(WechatCommonHandler, self).initialize(sign_check, sign_key)
+    def initialize(self, sign_check=False):
+        super(WechatCommonHandler, self).initialize(sign_check)
         self.post_args = {}
 
     @tornado.gen.coroutine
-    def post(self, *args, **kwargs):
+    def prepare(self):
         try:
             self.post_args = dtools.xml2dict(self.request.body)
         except ExpatError:
-            raise HTTPError(400)
-        if self.sign_check and self.sign_key and not security.check_signature(self.post_args, self.sign_key):
-            self.send_response(err_code=8001)
-            raise tornado.gen.Return(True)
-        else:
-            raise tornado.gen.Return(False)
+            raise tornado.web.HTTPError(400)
+        self.check_sign(self.post_args)
 
     def send_response(self, data=None, err_code=0, err_msg=''):
         if not data:
             data = {}
         data['return_code'] = err.simple_map.get(err_code, ('FAIL', 'ERROR'))[0]
-        data['return_msg'] = err.simple_map.get(err_code, ('FAIL', 'ERROR'))[1]
+        data['return_msg'] = err.code_map.get(err_code, ('FAIL', 'ERROR'))[1]
         self.write(dtools.dict2xml(data))
         self.finish()
 

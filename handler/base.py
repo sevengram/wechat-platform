@@ -9,20 +9,13 @@ from consts import err_code as err
 
 
 class BaseHandler(tornado.web.RequestHandler):
-    def initialize(self, sign_check=False, sign_key=''):
+    def initialize(self, sign_check=False):
         self.sign_check = sign_check
-        self.sign_key = sign_key
 
     @tornado.gen.coroutine
-    def post(self, *args, **kwargs):
-        if self.sign_check and self.sign_key and not security.check_signature(self.request.arguments, self.sign_key):
-            self.send_response(err_code=8001)
-            raise tornado.gen.Return(True)
-        else:
-            raise tornado.gen.Return(False)
-
     def prepare(self):
-        pass
+        req_args = {k: v[0] for k, v in self.request.arguments.iteritems() if v}
+        self.check_sign(req_args)
 
     def assign_arguments(self, essential, extra):
         try:
@@ -48,3 +41,16 @@ class BaseHandler(tornado.web.RequestHandler):
         self.write({'err_code': status_code})
         sys.stdout.flush()
 
+    def check_sign(self, refer_dict):
+        if self.sign_check:
+            sign_key = self.get_check_key(refer_dict)
+            if not sign_key:
+                self.send_response(err_code=8002)
+                return False
+            if not security.check_signature(refer_dict, sign_key):
+                self.send_response(err_code=8001)
+                return False
+        return True
+
+    def get_check_key(self, refer_dict):
+        raise NotImplementedError()
