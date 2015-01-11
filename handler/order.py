@@ -79,15 +79,17 @@ class PrepayHandler(SiteHandler):
                    'spbill_create_ip',
                    'trade_type',
                    'detail',
+                   'openid',
                    'goods_tag',
                    'attach'],
             renames=[('title', 'body')]
         )
+        if not req_data.get('openid'):
+            req_data['openid'] = req_data['unionid']  # TODO: search by unionId from db
         req_data.update(
             {
                 'mch_id': '10010984',  # TODO: from db
                 'nonce_str': security.nonce_str(),
-                'openid': 'oIvjEs_zh_VFqnFfiXkXBUyxsdMY',  # TODO: search by unionId from db
                 'notify_url': 'http://uri/notify/payment/',  # TODO
             }
         )
