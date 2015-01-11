@@ -7,7 +7,8 @@ import tornado.ioloop
 import tornado.options
 from tornado.options import define, options
 
-import handler.order as order
+from handler import user
+from handler import order
 from handler.wechat.message import WechatMsgHandler
 from handler.wechat.payment import WechatPayHandler
 
@@ -18,8 +19,9 @@ application = tornado.web.Application(
     handlers=[
         (r'/notify/messages', WechatMsgHandler),
         (r'/notify/payment', WechatPayHandler, dict(sign_check=True)),
-        (r'/site/orders', order.PrepayHandler, dict(sign_check=False)),
-        (r'/site/orders/(\w+)', order.OrderHandler, dict(sign_check=False))
+        (r'/sites/(\w+)/users', user.UserHandler, dict(sign_check=False)),
+        (r'/sites/(\w+)/orders', order.PrepayHandler, dict(sign_check=False)),
+        (r'/sites/(\w+)/orders/(\w+)', order.OrderHandler, dict(sign_check=False))
     ], debug=True
 )
 

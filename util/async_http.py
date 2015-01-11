@@ -27,3 +27,14 @@ def post_dict(url, data, data_type='form'):
     )
     resp = yield client.fetch(req)
     raise tornado.gen.Return(resp)
+
+
+@tornado.gen.coroutine
+def get_dict(url, data):
+    client = tornado.httpclient.AsyncHTTPClient()
+    req = tornado.httpclient.HTTPRequest(
+        url=url + '?' + urllib.urlencode(data),
+        method='GET'
+    )
+    resp = yield client.fetch(req)
+    raise tornado.gen.Return(resp)

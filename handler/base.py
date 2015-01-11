@@ -5,7 +5,7 @@ import tornado.web
 import tornado.gen
 
 from util import security
-from consts import err_code as err
+from consts import errcode as err
 
 
 class BaseHandler(tornado.web.RequestHandler):
@@ -32,8 +32,8 @@ class BaseHandler(tornado.web.RequestHandler):
     def send_response(self, data=None, err_code=0, err_msg=''):
         self.write(
             {'err_code': err_code,
-             'err_alias': err.code_map.get(err_code)[0],
-             'err_msg': err_msg or err.code_map.get(err_code)[1],
+             'err_alias': err.err_map.get(err_code)[0],
+             'err_msg': err_msg or err.err_map.get(err_code)[1],
              'data': data or ''})
         self.finish()
         sys.stdout.flush()
