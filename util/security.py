@@ -3,8 +3,6 @@
 import hashlib
 import random
 
-from tornado.web import HTTPError
-
 
 def nonce_str():
     return str(random.random())[2:]
@@ -13,7 +11,7 @@ def nonce_str():
 def check_signature(data, apikey):
     sign = data.get('sign')
     if not sign:
-        raise HTTPError(400)
+        return False
     return build_signature(data, apikey) == sign
 
 

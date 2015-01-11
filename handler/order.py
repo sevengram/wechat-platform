@@ -1,12 +1,12 @@
 # -*- coding:utf8 -*-
 import time
 
-import tornado.web
 import tornado.gen
 import tornado.httpclient
 
 from util import dtools
 from util import security
+from util import async_http as ahttp
 from consts import url
 from consts import err_code as err
 from consts.key import newbuy_apikey
@@ -16,6 +16,20 @@ from handler.site import SiteHandler
 class OrderHandler(SiteHandler):
     @tornado.gen.coroutine
     def get(self, prepay_id, *args, **kwargs):
+        req_data = {
+            'appid': self.get_argument('appid'),
+            'mch_id': '10010984',  # TODO: from db
+            'transaction_id': '013467007045764',  # TODO: from db
+            'out_trade_no': '1217752501201407033233368018',  # TODO: from db
+            'nonce_str': security.nonce_str(),
+        }
+        req_key = newbuy_apikey  # TODO from db
+        req_data['sign'] = security.build_signature(req_data, req_key)
+        try:
+            resp = yield ahttp.post_dict(url=url.unified_order, data=req_data, data_type='xml')
+        except tornado.httpclient.HTTPError:
+            self.send_response(err_code=1001)
+            return
         self.write(prepay_id)
         self.finish()
 
@@ -38,7 +52,7 @@ class PrepayHandler(SiteHandler):
             extra=[('detail', ''),
                    ('goods_tag', '')]
         )
-        data = dtools.transfer(
+        req_data = dtools.transfer(
             parse_args,
             copys=['appid',
                    'out_trade_no',
@@ -50,7 +64,7 @@ class PrepayHandler(SiteHandler):
                    'attach'],
             renames=[('title', 'body')]
         )
-        data.update(
+        req_data.update(
             {
                 'mch_id': '10010984',  # TODO: from db
                 'nonce_str': security.nonce_str(),
@@ -58,23 +72,17 @@ class PrepayHandler(SiteHandler):
                 'notify_url': 'http://uri/notify/payment/',  # TODO
             }
         )
-        resp_key = newbuy_apikey  # TODO from db
-        data['sign'] = security.build_signature(data, resp_key)
-        client = tornado.httpclient.AsyncHTTPClient()
-        req = tornado.httpclient.HTTPRequest(
-            url=url.unified_order,
-            method='POST',
-            body=dtools.dict2xml(data)
-        )
+        req_key = newbuy_apikey  # TODO from db
+        req_data['sign'] = security.build_signature(req_data, req_key)
         try:
-            resp = yield client.fetch(req)
+            resp = yield ahttp.post_dict(url=url.unified_order, data=req_data, data_type='xml')
         except tornado.httpclient.HTTPError:
             self.send_response(err_code=1001)
             return
         if resp.code == 200:
             resp_data = dtools.xml2dict(resp.body)
             if resp_data['return_code'].lower() == 'success':
-                if security.check_signature(resp_data, resp_key):
+                if security.check_signature(resp_data, req_key):
                     if resp_data['result_code'].lower() == 'success':
                         post_resp_data = {
                             'appid': resp_data['appid'],
@@ -83,7 +91,7 @@ class PrepayHandler(SiteHandler):
                             'prepay_id': resp_data['prepay_id'],
                             'sign_type': 'MD5'
                         }
-                        post_resp_data['sign'] = security.build_signature(post_resp_data, resp_key)
+                        post_resp_data['sign'] = security.build_signature(post_resp_data, req_key)
                         self.send_response(post_resp_data)
                     else:
                         self.send_response(err_code=err.alias_map.get(resp_data.get('err_code'), 9001),

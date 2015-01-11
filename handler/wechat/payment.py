@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 import json
 
-import tornado.web
 import tornado.gen
 import tornado.httpclient
 
@@ -10,12 +9,13 @@ from consts.key import magento_sitekey, newbuy_apikey
 from handler.wechat.common import WechatCommonHandler
 from util import dtools
 from util import security
+from util import async_http as ahttp
 
 
 class WechatPayHandler(WechatCommonHandler):
     @tornado.gen.coroutine
     def post(self):
-        data = dtools.transfer(
+        req_data = dtools.transfer(
             self.post_args,
             copys=['appid',
                    'result_code',
@@ -27,21 +27,18 @@ class WechatPayHandler(WechatCommonHandler):
                    'attach',
                    'time_end']
         )
-        data.update(
+        req_data.update(
             {
                 'nonce_str': security.nonce_str(),
             }
         )
-        resp_key = magento_sitekey  # TODO from db
-        data['sign'] = security.build_signature(data, resp_key)
-        client = tornado.httpclient.AsyncHTTPClient()
-        req = tornado.httpclient.HTTPRequest(
-            url='http://121.40.32.246/newbuy/newbuy_order/index/wechatPayment',  # TODO: from db
-            method='POST',
-            body=json.dumps(data)
-        )
+        req_key = magento_sitekey  # TODO from db
+        req_data['sign'] = security.build_signature(req_data, req_key)
+
         try:
-            resp = yield client.fetch(req)
+            resp = yield ahttp.post_dict(
+                url='http://121.40.32.246/newbuy/newbuy_order/index/wechatPayment',  # TODO: from db
+                data=req_data)
         except tornado.httpclient.HTTPError:
             self.send_response(err_code=9002)
             return
