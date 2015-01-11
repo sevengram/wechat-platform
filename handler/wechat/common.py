@@ -21,13 +21,14 @@ class WechatCommonHandler(BaseHandler):
             self.post_args = dtools.xml2dict(self.request.body)
         except ExpatError:
             raise tornado.web.HTTPError(400)
-        self.check_sign(self.post_args)
+        if self.sign_check:
+            self.check_signature(self.post_args)
 
     def send_response(self, data=None, err_code=0, err_msg=''):
         if not data:
             data = {}
-        data['return_code'] = err.simple_map.get(err_code, ('FAIL', 'ERROR'))[0]
-        data['return_msg'] = err.code_map.get(err_code, ('FAIL', 'ERROR'))[1]
+        data['return_code'] = err.simple_map.get(err_code)[0]
+        data['return_msg'] = err.code_map.get(err_code)[1]
         self.write(dtools.dict2xml(data))
         self.finish()
 

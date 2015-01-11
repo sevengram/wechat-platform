@@ -33,7 +33,7 @@ class WechatPayHandler(WechatCommonHandler):
             }
         )
         req_key = magento_sitekey  # TODO from db
-        req_data['sign'] = security.build_signature(req_data, req_key)
+        req_data['sign'] = security.build_sign(req_data, req_key)
 
         try:
             resp = yield ahttp.post_dict(

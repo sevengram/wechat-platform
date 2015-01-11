@@ -24,14 +24,39 @@ class OrderHandler(SiteHandler):
             'nonce_str': security.nonce_str(),
         }
         req_key = newbuy_apikey  # TODO from db
-        req_data['sign'] = security.build_signature(req_data, req_key)
+        req_data['sign'] = security.build_sign(req_data, req_key)
         try:
-            resp = yield ahttp.post_dict(url=url.unified_order, data=req_data, data_type='xml')
+            resp = yield ahttp.post_dict(url=url.order_query, data=req_data, data_type='xml')
         except tornado.httpclient.HTTPError:
             self.send_response(err_code=1001)
             return
-        self.write(prepay_id)
-        self.finish()
+        if resp.code == 200:
+            resp_data = dtools.xml2dict(resp.body)
+            if resp_data['return_code'].lower() == 'success':
+                if security.check_sign(resp_data, req_key):
+                    if resp_data['result_code'].lower() == 'success':
+                        post_resp_data = dtools.transfer(
+                            resp_data,
+                            copys=[
+                                'appid',
+                                'trade_state',
+                                'out_trade_no',
+                                'total_fee',
+                                'transaction_id',
+                                'attach',
+                                'time_end'
+                            ]
+                        )
+                        self.send_response(post_resp_data)
+                    else:
+                        self.send_response(err_code=err.alias_map.get(resp_data.get('err_code'), 9001),
+                                           err_msg=resp_data.get('err_code_des'))
+                else:
+                    self.send_response(err_code=1002)
+            else:
+                self.send_response(err_code=1001, err_msg=resp_data.get('return_msg'))
+        else:
+            self.send_response(err_code=1001, err_msg='wechat %d' % resp.code)
 
 
 class PrepayHandler(SiteHandler):
@@ -73,16 +98,16 @@ class PrepayHandler(SiteHandler):
             }
         )
         req_key = newbuy_apikey  # TODO from db
-        req_data['sign'] = security.build_signature(req_data, req_key)
+        req_data['sign'] = security.build_sign(req_data, req_key)
         try:
-            resp = yield ahttp.post_dict(url=url.unified_order, data=req_data, data_type='xml')
+            resp = yield ahttp.post_dict(url=url.order_add, data=req_data, data_type='xml')
         except tornado.httpclient.HTTPError:
             self.send_response(err_code=1001)
             return
         if resp.code == 200:
             resp_data = dtools.xml2dict(resp.body)
             if resp_data['return_code'].lower() == 'success':
-                if security.check_signature(resp_data, req_key):
+                if security.check_sign(resp_data, req_key):
                     if resp_data['result_code'].lower() == 'success':
                         post_resp_data = {
                             'appid': resp_data['appid'],
@@ -91,7 +116,7 @@ class PrepayHandler(SiteHandler):
                             'prepay_id': resp_data['prepay_id'],
                             'sign_type': 'MD5'
                         }
-                        post_resp_data['sign'] = security.build_signature(post_resp_data, req_key)
+                        post_resp_data['pay_sign'] = security.build_sign(post_resp_data, req_key)
                         self.send_response(post_resp_data)
                     else:
                         self.send_response(err_code=err.alias_map.get(resp_data.get('err_code'), 9001),
@@ -99,6 +124,6 @@ class PrepayHandler(SiteHandler):
                 else:
                     self.send_response(err_code=1002)
             else:
-                self.send_response(err_code=1001, err_msg=resp_data['return_msg'])
+                self.send_response(err_code=1001, err_msg=resp_data.get('return_msg'))
         else:
             self.send_response(err_code=1001, err_msg='wechat %d' % resp.code)
