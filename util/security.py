@@ -10,6 +10,8 @@ def nonce_str():
 
 def check_sign(data, apikey):
     sign = data.get('sign')
+    if not 'nonce_str' in data:
+        return False
     if not sign:
         return False
     return build_sign(data, apikey) == sign

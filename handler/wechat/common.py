@@ -5,8 +5,8 @@ from pyexpat import ExpatError
 import tornado.gen
 import tornado.web
 
+import consts.errcode as err
 from util import dtools
-from consts import err_code as err
 from handler.base import BaseHandler
 
 
@@ -28,7 +28,7 @@ class WechatCommonHandler(BaseHandler):
         if not data:
             data = {}
         data['return_code'] = err.simple_map.get(err_code)[0]
-        data['return_msg'] = err.code_map.get(err_code)[1]
+        data['return_msg'] = err.err_map.get(err_code)[1]
         self.write(dtools.dict2xml(data))
         self.finish()
 

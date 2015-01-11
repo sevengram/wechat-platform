@@ -4,7 +4,7 @@ import json
 import tornado.gen
 import tornado.httpclient
 
-import consts.err_code as err
+import consts.errcode as err
 from consts.key import magento_sitekey, newbuy_apikey
 from handler.wechat.common import WechatCommonHandler
 from util import dtools
@@ -22,11 +22,12 @@ class WechatPayHandler(WechatCommonHandler):
                    'err_code_des',
                    'out_trade_no',
                    'total_fee',
-                   'unionid',
+                   'openid',
                    'transaction_id',
                    'attach',
                    'time_end']
         )
+        req_data['unionid'] = req_data['openid']  # TODO: from db
         req_data.update(
             {
                 'nonce_str': security.nonce_str(),
