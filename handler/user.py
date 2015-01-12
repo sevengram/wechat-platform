@@ -12,6 +12,11 @@ from handler.site import SiteHandler
 
 class UserHandler(SiteHandler):
     @tornado.gen.coroutine
+    def post(self, site_id, *args, **kwargs):
+        yield self.put(site_id)
+
+
+    @tornado.gen.coroutine
     def put(self, site_id, *args, **kwargs):
         req_data1 = {
             'code': self.get_argument('code'),
