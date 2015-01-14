@@ -79,6 +79,7 @@ class PrepayHandler(SiteBaseHandler):
                    'trade_type',
                    'detail',
                    'openid',
+                   'unionid',
                    'goods_tag',
                    'attach'],
             renames=[('title', 'body')]
