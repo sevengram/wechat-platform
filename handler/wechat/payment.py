@@ -38,7 +38,7 @@ class WechatPayHandler(WechatBaseHandler):
 
         try:
             resp = yield ahttp.post_dict(
-                url='http://121.40.32.246/newbuy/newbuy_order/index/wechatPayment',  # TODO: from db
+                url='http://qa.newbuy.cn/newbuy/newbuy_order/index/wechatPayment',  # TODO: from db
                 data=req_data)
         except tornado.httpclient.HTTPError:
             self.send_response(err_code=9002)

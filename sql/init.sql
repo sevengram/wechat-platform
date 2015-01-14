@@ -2,6 +2,7 @@ CREATE TABLE `site_info` (
   `siteid` char(32) NOT NULL PRIMARY KEY,
   `sitekey` char(128) NOT NULL,
   `pay_notify_url` char(255),
+  `utime` bigint NOT NULL,
   `ctime` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `status` tinyint NOT NULL DEFAULT 1
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
@@ -25,6 +26,7 @@ CREATE TABLE `wechat_app_info` (
   `apikey` char(128),
   `pay_username` char(128),
   `pay_pwd` char(128),
+  `utime` bigint NOT NULL,
   `ctime` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `status` tinyint NOT NULL DEFAULT 1,
   KEY `index_mchid` (`mchid`),
@@ -35,6 +37,7 @@ CREATE TABLE `wechat_app_info` (
 CREATE TABLE `site_app_hooks` (
   `appid` char(32) NOT NULL,
   `siteid` char(32) NOT NULL,
+  `utime` bigint NOT NULL,
   `ctime` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `status` tinyint NOT NULL DEFAULT 1,
   PRIMARY KEY  (`appid`,`siteid`),
@@ -56,6 +59,7 @@ CREATE TABLE `wechat_user_info` (
   `lang` char(8),
   `headimgurl` char(255),
   `subscribe_time` bigint,
+  `utime` bigint NOT NULL,
   `ctime` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY `index_appid_openid` (`appid`,`openid`),
   KEY `index_openid` (`openid`),
