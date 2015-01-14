@@ -3,7 +3,6 @@
 import time
 
 import tornado.web
-
 import tornado.gen
 import tornado.httpclient
 
@@ -12,17 +11,17 @@ from util import security
 from util import async_http as ahttp
 from consts import url
 from consts.key import newbuy_apikey
-from handler.site import SiteHandler
+from handler.site.base import SiteBaseHandler
 
 
-class OrderHandler(SiteHandler):
+class OrderHandler(SiteBaseHandler):
     @tornado.gen.coroutine
-    def get(self, site_id, prepay_id, *args, **kwargs):
+    def get(self, site_id, out_trade_no, *args, **kwargs):
         req_data = {
             'appid': self.get_argument('appid'),
             'mch_id': '10010984',  # TODO: from db
-            'transaction_id': '013467007045764',  # TODO: from db
-            'out_trade_no': '1217752501201407033233368018',  # TODO: from db
+            'transaction_id': '',  # TODO: from db
+            'out_trade_no': out_trade_no,
             'nonce_str': security.nonce_str(),
         }
         req_key = newbuy_apikey  # TODO from db
@@ -90,7 +89,7 @@ class PrepayHandler(SiteHandler):
             {
                 'mch_id': '10010984',  # TODO: from db
                 'nonce_str': security.nonce_str(),
-                'notify_url': 'http://uri/notify/payment/',  # TODO
+                'notify_url': url.payment_notify,
             }
         )
         req_key = newbuy_apikey  # TODO from db

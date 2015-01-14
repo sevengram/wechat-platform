@@ -6,13 +6,13 @@ import tornado.httpclient
 
 import consts.errcode as err
 from consts.key import magento_sitekey, newbuy_apikey
-from handler.wechat.common import WechatCommonHandler
+from handler.wechat.base import WechatBaseHandler
 from util import dtools
 from util import security
 from util import async_http as ahttp
 
 
-class WechatPayHandler(WechatCommonHandler):
+class WechatPayHandler(WechatBaseHandler):
     @tornado.gen.coroutine
     def post(self):
         req_data = dtools.transfer(

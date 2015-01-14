@@ -1,7 +1,22 @@
 # -*- coding: utf-8 -*-
 
+import base64
 import hashlib
 import random
+from Crypto.Cipher import AES
+
+
+block_size = AES.block_size
+pad = lambda s: s + (block_size - len(s) % block_size) * chr(block_size - len(s) % block_size)
+unpad = lambda s: s[0:-ord(s[-1])]
+
+
+def encrypt(plain, *args):
+    return base64.b64encode(AES.new(pad((''.join(args) * 11)[::-3][:29])).encrypt(pad(plain)))
+
+
+def decrypt(cipher, *args):
+    return unpad(AES.new(pad((''.join(args) * 11)[::-3][:29])).decrypt(base64.b64decode(cipher)))
 
 
 def nonce_str():

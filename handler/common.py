@@ -8,7 +8,7 @@ from util import security
 from consts import errcode as err
 
 
-class BaseHandler(tornado.web.RequestHandler):
+class CommonHandler(tornado.web.RequestHandler):
     def initialize(self, sign_check=False):
         self.sign_check = sign_check
 

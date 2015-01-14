@@ -7,8 +7,7 @@ import tornado.ioloop
 import tornado.options
 from tornado.options import define, options
 
-from handler import user
-from handler import order
+from handler.site import order, user
 from handler.wechat.message import WechatMsgHandler
 from handler.wechat.payment import WechatPayHandler
 

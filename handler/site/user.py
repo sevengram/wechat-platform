@@ -1,20 +1,17 @@
 # -*- coding: utf-8 -*-
 
 import tornado.gen
-
 import tornado.httpclient
 
 from consts import url
 from util import async_http as ahttp
+from handler.site.base import SiteBaseHandler
 
-from handler.site import SiteHandler
 
-
-class UserHandler(SiteHandler):
+class UserHandler(SiteBaseHandler):
     @tornado.gen.coroutine
     def post(self, site_id, *args, **kwargs):
         yield self.put(site_id)
-
 
     @tornado.gen.coroutine
     def put(self, site_id, *args, **kwargs):

@@ -7,12 +7,12 @@ import tornado.web
 
 import consts.errcode as err
 from util import dtools
-from handler.base import BaseHandler
+from handler.common import CommonHandler
 
 
-class WechatCommonHandler(BaseHandler):
+class WechatBaseHandler(CommonHandler):
     def initialize(self, sign_check=False):
-        super(WechatCommonHandler, self).initialize(sign_check)
+        super(WechatBaseHandler, self).initialize(sign_check)
         self.post_args = {}
 
     @tornado.gen.coroutine
