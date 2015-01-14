@@ -79,13 +79,12 @@ class PrepayHandler(SiteBaseHandler):
                    'trade_type',
                    'detail',
                    'openid',
-                   'unionid',
                    'goods_tag',
                    'attach'],
             renames=[('title', 'body')]
         )
         if not req_data.get('openid'):
-            req_data['openid'] = req_data['unionid']  # TODO: search by unionId from db
+            req_data['openid'] = parse_args['unionid']  # TODO: search by unionId from db
         req_data.update(
             {
                 'mch_id': '10010984',  # TODO: from db
