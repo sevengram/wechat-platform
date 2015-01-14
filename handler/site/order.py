@@ -50,7 +50,7 @@ class OrderHandler(SiteBaseHandler):
             self.send_response(post_resp_data)
 
 
-class PrepayHandler(SiteHandler):
+class PrepayHandler(SiteBaseHandler):
     @tornado.gen.coroutine
     def post(self, site_id, *args, **kwargs):
         parse_args = self.assign_arguments(
