@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
+
 import sys
 
 import tornado.web
 import tornado.gen
 
+from util import storage
 from util import security
 from consts import errcode as err
 
@@ -11,6 +13,8 @@ from consts import errcode as err
 class CommonHandler(tornado.web.RequestHandler):
     def initialize(self, sign_check=False):
         self.sign_check = sign_check
+        self.storage = storage.WechatStorage(host='newbuy01.mysql.rds.aliyuncs.com', user='wechat_admin',
+                                             passwd='_WecAd456')
 
     @tornado.gen.coroutine
     def prepare(self):
@@ -30,23 +34,24 @@ class CommonHandler(tornado.web.RequestHandler):
         return dict(r1, **r2)
 
     def send_response(self, data=None, err_code=0, err_msg=''):
-        self.write(
-            {'err_code': err_code,
-             'err_alias': err.err_map.get(err_code)[0],
-             'err_msg': err_msg or err.err_map.get(err_code)[1],
-             'data': data or ''})
-        self.finish()
+        resp = {'err_code': err_code,
+                'err_alias': err.err_map.get(err_code)[0],
+                'err_msg': err_msg or err.err_map.get(err_code)[1],
+                'data': data or ''}
+        print resp  # TODO: debug msg
         sys.stdout.flush()
+        self.write(resp)
+        self.finish()
 
     def write_error(self, status_code, **kwargs):
         self.write({'err_code': status_code})
         sys.stdout.flush()
 
-    def check_signature(self, refer_dict):
+    def check_signature(self, refer_dict, method='md5'):
         sign_key = self.get_check_key(refer_dict)
         if not sign_key:
             self.send_response(err_code=8002)
-        if not security.check_sign(refer_dict, sign_key):
+        if not security.check_sign(refer_dict, sign_key, method):
             self.send_response(err_code=8001)
 
     def get_check_key(self, refer_dict):

@@ -2,6 +2,7 @@ CREATE TABLE `site_info` (
   `siteid` char(32) NOT NULL PRIMARY KEY,
   `sitekey` char(128) NOT NULL,
   `pay_notify_url` char(255),
+  `msg_notify_url` char(255),
   `utime` bigint NOT NULL,
   `ctime` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `status` tinyint NOT NULL DEFAULT 1
@@ -22,7 +23,7 @@ CREATE TABLE `wechat_app_info` (
   `mp_pwd` char(128),
   `bizuin` char(32),
   `data_bizuin` char(32),
-  `mchid` char(32),
+  `mch_id` char(32),
   `apikey` char(128),
   `pay_username` char(128),
   `pay_pwd` char(128),

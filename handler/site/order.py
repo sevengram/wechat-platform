@@ -6,25 +6,31 @@ import tornado.web
 import tornado.gen
 import tornado.httpclient
 
+import model
 from util import dtools
 from util import security
 from util import async_http as ahttp
 from consts import url
-from consts.key import newbuy_apikey
 from handler.site.base import SiteBaseHandler
 
 
 class OrderHandler(SiteBaseHandler):
     @tornado.gen.coroutine
     def get(self, site_id, out_trade_no, *args, **kwargs):
+        appid = self.get_argument('appid')
+        appinfo = self.storage.get_app_info(appid=appid)
+        if not appinfo:
+            self.send_response(err_code=3201)
+            raise tornado.gen.Return()
+
         req_data = {
-            'appid': self.get_argument('appid'),
-            'mch_id': '10010984',  # TODO: from db
+            'appid': appid,
+            'mch_id': appinfo.get('mch_id'),
             'transaction_id': '',  # TODO: from db
             'out_trade_no': out_trade_no,
             'nonce_str': security.nonce_str(),
         }
-        req_key = newbuy_apikey  # TODO from db
+        req_key = model.Appinfo(appinfo).get_apikey()
         req_data['sign'] = security.build_sign(req_data, req_key)
 
         try:
@@ -85,14 +91,20 @@ class PrepayHandler(SiteBaseHandler):
         )
         if not req_data.get('openid'):
             req_data['openid'] = parse_args['unionid']  # TODO: search by unionId from db
+
+        appinfo = self.storage.get_app_info(appid=req_data['appid'])
+        if not appinfo:
+            self.send_response(err_code=3201)
+            raise tornado.gen.Return()
+
         req_data.update(
             {
-                'mch_id': '10010984',  # TODO: from db
+                'mch_id': appinfo.get('mch_id'),
                 'nonce_str': security.nonce_str(),
                 'notify_url': url.payment_notify,
             }
         )
-        req_key = newbuy_apikey  # TODO from db
+        req_key = model.Appinfo(appinfo).get_apikey()
         req_data['sign'] = security.build_sign(req_data, req_key)
 
         try:

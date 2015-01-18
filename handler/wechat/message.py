@@ -1,91 +1,94 @@
 # -*- coding:utf8 -*-
 
-import sys
+import time
 import hashlib
-from collections import defaultdict
 
+import pyexpat
 import tornado.web
 import tornado.gen
 import tornado.httpclient
-import tornado.curl_httpclient
-import tornado.ioloop
 
-from consts import reply
-from util import xmltodict
+from handler.common import CommonHandler
+from consts.key import magento_sitekey
+from util import security
 from util import dtools
 
 
-type_dict = defaultdict(lambda: ['default'], {
-    'image': ['default'],
-    'location': ['default'],
-    'text': ['command', 'default'],
-    'event': ['welcome']
-})
-
-#
-# Process functions
-#
+# TODO: should remove
+def get_coupon(openid):
+    return hashlib.md5(openid).hexdigest()[:8]
 
 
-@tornado.gen.coroutine
-def process_default(request):
-    content = request.get('Content')
-    if content:
-        message = reply.default_format % content
-    else:
-        message = reply.default_response
-    raise tornado.gen.Return(
-        dtools.text_response(request['FromUserName'], message, 'default'))
-
-
-@tornado.gen.coroutine
-def process_welcome(request):
-    raise tornado.gen.Return(dtools.text_response(request['FromUserName'], reply.welcome_direction, 'welcome'))
-
-
-@tornado.gen.coroutine
-def process_command(request):
-    cmd = request['Content']
-    if cmd in reply.text_commands:
-        cmd = reply.text_commands[cmd]
-    if len(cmd) == 1 and '0' <= cmd <= '9':
-        raise tornado.gen.Return(
-            dtools.text_response(request['FromUserName'], reply.command_dicts[cmd], 'command'))
-    else:
-        raise tornado.gen.Return(None)
-
-
-process_dict = {
-    'command': process_command,
-    'default': process_default,
-    'welcome': process_welcome
-}
-
-
-class WechatMsgHandler(tornado.web.RequestHandler):
+class WechatMsgHandler(CommonHandler):
+    @tornado.gen.coroutine
     def get(self):
-        if self.check_signature():
-            self.write(self.get_argument('echostr'))
+        self.write(self.get_argument('echostr', 'get ok'))
+        self.finish()
 
     @tornado.gen.coroutine
     def post(self):
-        req = xmltodict.parse(self.request.body)['xml']
-        res = ''
-        for p in type_dict.get(req.get('MsgType')):
-            if p in process_dict:
-                res = yield process_dict.get(p)(request=req)
-                if res == 1:
-                    self.finish()
-                    sys.stdout.flush()
-                    return
-                elif res:
-                    break
-        sys.stdout.flush()
-        self.write(res)
-        self.finish()
+        try:
+            post_args = dtools.xml2dict(self.request.body)
+        except pyexpat.ExpatError:
+            raise tornado.web.HTTPError(400)
+        req_data = dtools.transfer(
+            post_args,
+            renames=[
+                ('FromUserName', 'openid'),
+                ('MsgType', 'msg_type'),
+                ('Content', 'content'),
+                ('MsgId', 'msg_id')]
+        )
+        req_data.update(
+            {
+                'appid': self.storage.get_app_info(openid=post_args['ToUserName'], select_key='appid'),
+                'unionid': req_data['openid'],  # TODO: from db
+                'nonce_str': security.nonce_str()
+            }
+        )
+        req_key = magento_sitekey  # TODO from db
+        req_data['sign'] = security.build_sign(req_data, req_key)
 
-    def check_signature(self):
-        arr = ['ilovedeepsky', self.get_argument(
-            'timestamp'), self.get_argument('nonce')]
-        arr.sort()
-        return hashlib.sha1(''.join(arr)).hexdigest() == self.get_argument('signature')
+        # try:
+        #     resp = yield ahttp.post_dict(
+        #         url='http://msg_notify_url',
+        #         data=req_data)
+        # except tornado.httpclient.HTTPError:
+        #     self.send_response(err_code=9002)
+        #     return
+        # if resp.code == 200:
+        #     resp_data = json.loads(resp.body)
+        #     self.send_response(err_code=err.alias_map.get(resp_data.get('return_code'), 9001))
+        # else:
+        #     self.send_response(err_code=9002)
+        # TODO: test data
+        resp_data = {
+            'appid': 'wx7394ce44a23b3225',
+            'openid': req_data['openid'],
+            'msg_type': 'text',
+            'content': get_coupon(req_data['openid'])  # TODO: from upstream
+        }
+        post_resp_data = dtools.transfer(
+            resp_data,
+            renames=[
+                ('openid', 'ToUserName'),
+                ('msg_type', 'MsgType'),
+                ('content', 'Content')]
+        )
+        post_resp_data.update(
+            {
+                'CreateTime': int(time.time()),
+                'FromUserName': post_args['ToUserName']
+            }
+        )
+        self.send_response(post_resp_data)
+
+    def check_signature(self, refer_dict, method='sha1'):
+        super(WechatMsgHandler, self).check_signature(refer_dict, method)
+
+    def get_check_key(self, refer_dict):
+        return 'ilovedeepsky'
+
+    def send_response(self, data):
+        self.write(dtools.dict2xml(data))
+        self.finish()

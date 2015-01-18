@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import model
 import tornado.gen
 import tornado.httpclient
 
@@ -15,10 +16,16 @@ class UserHandler(SiteBaseHandler):
 
     @tornado.gen.coroutine
     def put(self, site_id, *args, **kwargs):
+        appid = self.get_argument('appid')
+        appinfo = self.storage.get_app_info(appid=appid)
+        if not appinfo:
+            self.send_response(err_code=3201)
+            raise tornado.gen.Return()
+
         req_data1 = {
             'code': self.get_argument('code'),
             'appid': self.get_argument('appid'),
-            'secret': '7beb21d84d4505815eb6165568b7a328',  # TODO: from db
+            'secret': model.Appinfo(appinfo).get_secret(),
             'grant_type': 'authorization_code',
         }
         try:
