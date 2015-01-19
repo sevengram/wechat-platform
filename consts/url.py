@@ -2,7 +2,7 @@
 
 hosts = "http://wechat.newbuy.cn"
 
-payment_notify = hosts + "/notify/payment/"
+payment_notify = hosts + "/notify/payment"
 
 order_add = "https://api.mch.weixin.qq.com/pay/unifiedorder"
 

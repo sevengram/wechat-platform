@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 
 import json
-import model
 
 import pyexpat
 import tornado.web
 import tornado.gen
 import tornado.httpclient
 
+import model
 import consts.errcode as err
 from consts.key import magento_sitekey
 from handler.common import CommonHandler

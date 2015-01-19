@@ -1,7 +1,6 @@
 # -*- coding:utf8 -*-
 
 import time
-
 import tornado.web
 import tornado.gen
 import tornado.httpclient
@@ -106,13 +105,11 @@ class PrepayHandler(SiteBaseHandler):
         )
         req_key = model.Appinfo(appinfo).get_apikey()
         req_data['sign'] = security.build_sign(req_data, req_key)
-
         try:
             resp = yield ahttp.post_dict(url=url.order_add, data=req_data, data_type='xml')
         except tornado.httpclient.HTTPError:
             self.send_response(err_code=1001)
             raise tornado.gen.Return()
-
         resp_data = self.parse_payment_resp(resp, req_key)
         if resp_data:
             real_sign_data = {
