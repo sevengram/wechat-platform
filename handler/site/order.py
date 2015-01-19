@@ -66,7 +66,7 @@ class PrepayHandler(SiteBaseHandler):
                        'total_fee',
                        'spbill_create_ip',
                        'trade_type',
-                       'site_notify_url',
+                       #'site_notify_url',
                        'nonce_str',
                        'sign'],
             extra=[('detail', ''),
@@ -115,12 +115,19 @@ class PrepayHandler(SiteBaseHandler):
 
         resp_data = self.parse_payment_resp(resp, req_key)
         if resp_data:
-            post_resp_data = {
-                'appid': resp_data['appid'],
-                'timestamp': str(int(time.time())),
-                'noncestr': security.nonce_str(),
-                'prepay_id': resp_data['prepay_id'],
-                'sign_type': 'MD5'
+            real_sign_data = {
+                'appId': resp_data['appid'],
+                'timeStamp': str(int(time.time())),
+                'nonceStr': security.nonce_str(),
+                'package': 'prepay_id=' + resp_data['prepay_id'],
+                'signType': 'MD5'
             }
-            post_resp_data['pay_sign'] = security.build_sign(post_resp_data, req_key)
+            post_resp_data = {
+                'appid': real_sign_data['appId'],
+                'timestamp': real_sign_data['timeStamp'],
+                'noncestr': real_sign_data['nonceStr'],
+                'prepay_id': resp_data['prepay_id'],
+                'sign_type': real_sign_data['signType'],
+                'pay_sign': security.build_sign(real_sign_data, req_key)
+            }
             self.send_response(post_resp_data)
