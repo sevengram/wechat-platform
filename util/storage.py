@@ -94,5 +94,5 @@ class WechatStorage(Storage):
     def get_app_info(self, appid='', openid='', select_key='*'):
         return self.get('wechat_app_info', {'openid': openid, 'appid': appid}, select_key=select_key)
 
-    def get_site_info(self, siteid):
-        return self.get('site_info', {'siteid': siteid})
+    def get_site_info(self, siteid, select_key='*'):
+        return self.get('site_info', {'siteid': siteid}, select_key=select_key)

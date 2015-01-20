@@ -6,4 +6,4 @@ cp -r handler upload
 cp -r sql upload
 cp -r util upload
 cp *.py upload 
-scp -r ./upload/* wechat@newbuy-qa-pay01:/home/wechat/service
+scp -r ./upload/* wechat@newbuy-prod-pay01:/home/wechat/service

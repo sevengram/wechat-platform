@@ -3,13 +3,13 @@
 import json
 
 import pyexpat
+import sys
 import tornado.web
 import tornado.gen
 import tornado.httpclient
 
 import model
 import consts.errcode as err
-from consts.key import magento_sitekey
 from handler.common import CommonHandler
 from util import dtools
 from util import security
@@ -50,12 +50,14 @@ class WechatPayHandler(CommonHandler):
                 'nonce_str': security.nonce_str()
             }
         )
-        req_key = magento_sitekey  # TODO from db
+        siteid = 'newbuy'  # TODO: code here
+        site_info = self.storage.get_site_info(siteid=siteid)
+        req_key = model.Siteinfo(site_info).get_sitekey()
         req_data['sign'] = security.build_sign(req_data, req_key)
 
         try:
             resp = yield ahttp.post_dict(
-                url='http://qa.newbuy.cn/newbuy/newbuy_order/index/wechatPayment',  # TODO: from db
+                url=site_info['pay_notify_url'],
                 data=req_data)
         except tornado.httpclient.HTTPError:
             self.send_response(err_code=9002)
@@ -74,8 +76,8 @@ class WechatPayHandler(CommonHandler):
     def send_response(self, data=None, err_code=0, err_msg=''):
         if not data:
             data = {}
-        data['return_code'] = err.simple_map.get(err_code)[0]
-        data['return_msg'] = err.err_map.get(err_code)[1]
+        data['return_code'] = err.simple_map[err_code][0]
+        data['return_msg'] = err.err_map[err_code][1]
         self.write(dtools.dict2xml(data))
         self.finish()
 

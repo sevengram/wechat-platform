@@ -35,8 +35,8 @@ class CommonHandler(tornado.web.RequestHandler):
 
     def send_response(self, data=None, err_code=0, err_msg=''):
         resp = {'err_code': err_code,
-                'err_alias': err.err_map.get(err_code)[0],
-                'err_msg': err_msg or err.err_map.get(err_code)[1],
+                'err_alias': err.err_map[err_code][0],
+                'err_msg': err_msg or err.err_map[err_code][1],
                 'data': data or ''}
         print resp  # TODO: debug msg
         sys.stdout.flush()

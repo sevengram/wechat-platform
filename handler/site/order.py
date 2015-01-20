@@ -1,6 +1,7 @@
 # -*- coding:utf8 -*-
 
 import time
+
 import tornado.web
 import tornado.gen
 import tornado.httpclient
@@ -15,7 +16,7 @@ from handler.site.base import SiteBaseHandler
 
 class OrderHandler(SiteBaseHandler):
     @tornado.gen.coroutine
-    def get(self, site_id, out_trade_no, *args, **kwargs):
+    def get(self, siteid, out_trade_no, *args, **kwargs):
         appid = self.get_argument('appid')
         appinfo = self.storage.get_app_info(appid=appid)
         if not appinfo:
@@ -48,7 +49,6 @@ class OrderHandler(SiteBaseHandler):
                     'out_trade_no',
                     'total_fee',
                     'transaction_id',
-                    'attach',
                     'time_end'
                 ]
             )
@@ -57,7 +57,7 @@ class OrderHandler(SiteBaseHandler):
 
 class PrepayHandler(SiteBaseHandler):
     @tornado.gen.coroutine
-    def post(self, site_id, *args, **kwargs):
+    def post(self, siteid, *args, **kwargs):
         parse_args = self.assign_arguments(
             essential=['appid',
                        'title',
@@ -65,7 +65,6 @@ class PrepayHandler(SiteBaseHandler):
                        'total_fee',
                        'spbill_create_ip',
                        'trade_type',
-                       #'site_notify_url',
                        'nonce_str',
                        'sign'],
             extra=[('detail', ''),
@@ -84,13 +83,11 @@ class PrepayHandler(SiteBaseHandler):
                    'trade_type',
                    'detail',
                    'openid',
-                   'goods_tag',
-                   'attach'],
+                   'goods_tag'],
             renames=[('title', 'body')]
         )
         if not req_data.get('openid'):
             req_data['openid'] = parse_args['unionid']  # TODO: search by unionId from db
-
         appinfo = self.storage.get_app_info(appid=req_data['appid'])
         if not appinfo:
             self.send_response(err_code=3201)
@@ -98,6 +95,7 @@ class PrepayHandler(SiteBaseHandler):
 
         req_data.update(
             {
+                'attach': 'newbuy',
                 'mch_id': appinfo.get('mch_id'),
                 'nonce_str': security.nonce_str(),
                 'notify_url': url.payment_notify,

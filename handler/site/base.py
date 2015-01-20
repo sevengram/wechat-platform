@@ -14,25 +14,25 @@ from util import security
 
 
 class SiteBaseHandler(CommonHandler):
-    def head(self, site_id, *args, **kwargs):
+    def head(self, siteid, *args, **kwargs):
         raise HTTPError(405)
 
-    def get(self, site_id, *args, **kwargs):
+    def get(self, siteid, *args, **kwargs):
         raise HTTPError(405)
 
-    def post(self, site_id, *args, **kwargs):
+    def post(self, siteid, *args, **kwargs):
         raise HTTPError(405)
 
-    def delete(self, site_id, *args, **kwargs):
+    def delete(self, siteid, *args, **kwargs):
         raise HTTPError(405)
 
-    def patch(self, site_id, *args, **kwargs):
+    def patch(self, siteid, *args, **kwargs):
         raise HTTPError(405)
 
-    def put(self, site_id, *args, **kwargs):
+    def put(self, siteid, *args, **kwargs):
         raise HTTPError(405)
 
-    def options(self, site_id, *args, **kwargs):
+    def options(self, siteid, *args, **kwargs):
         raise HTTPError(405)
 
     def get_check_key(self, refer_dict):
@@ -66,7 +66,7 @@ class SiteBaseHandler(CommonHandler):
         resp_data = json.loads(resp.body)
         if resp_data.get('errcode'):
             if not default_data:
-                self.send_response(None, *wechat_map.get(int(resp_data.get('errcode'))))
+                self.send_response(None, *wechat_map[int(resp_data.get('errcode'))])
                 return None
             else:
                 self.send_response(default_data)

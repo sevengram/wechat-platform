@@ -11,11 +11,11 @@ from handler.site.base import SiteBaseHandler
 
 class UserHandler(SiteBaseHandler):
     @tornado.gen.coroutine
-    def post(self, site_id, *args, **kwargs):
-        yield self.put(site_id)
+    def post(self, siteid, *args, **kwargs):
+        yield self.put(siteid)
 
     @tornado.gen.coroutine
-    def put(self, site_id, *args, **kwargs):
+    def put(self, siteid, *args, **kwargs):
         appid = self.get_argument('appid')
         appinfo = self.storage.get_app_info(appid=appid)
         if not appinfo:

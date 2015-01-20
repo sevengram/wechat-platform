@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+
 from collections import defaultdict
 
 err_map = defaultdict(lambda: ('FAIL', 'ERROR'), {
