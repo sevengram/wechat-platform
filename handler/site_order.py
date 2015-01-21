@@ -1,21 +1,20 @@
 # -*- coding:utf8 -*-
 
 import time
-import sys
 
 import tornado.web
 import tornado.gen
 import tornado.httpclient
 
-import model
+import wrapper
 from util import dtools
 from util import security
 from util import async_http as ahttp
 from consts import url
-from handler.site.site import SiteHandler
+from handler.site_base import SiteBaseHandler
 
 
-class PrepayHandler(SiteHandler):
+class PrepayHandler(SiteBaseHandler):
     @tornado.gen.coroutine
     def post(self, siteid, *args, **kwargs):
         parse_args = self.assign_arguments(
@@ -29,8 +28,6 @@ class PrepayHandler(SiteHandler):
                    ('unionid', ''),
                    ('openid', '')]
         )
-        print parse_args
-        sys.stdout.flush()
         if not parse_args.get('unionid') and not parse_args.get('openid'):
             raise tornado.web.HTTPError(400)
 
@@ -57,13 +54,13 @@ class PrepayHandler(SiteHandler):
 
         req_data.update(
             {
-                'attach': 'newbuy',
+                'attach': 'siteid=' + siteid,
                 'mch_id': appinfo.get('mch_id'),
                 'nonce_str': security.nonce_str(),
                 'notify_url': url.payment_notify,
             }
         )
-        req_key = model.Appinfo(appinfo).get_apikey()
+        req_key = wrapper.Appinfo(appinfo).get_apikey()
         req_data['sign'] = security.build_sign(req_data, req_key)
 
         try:
@@ -92,7 +89,7 @@ class PrepayHandler(SiteHandler):
             self.send_response(post_resp_data)
 
 
-class OrderHandler(SiteHandler):
+class OrderHandler(SiteBaseHandler):
     @tornado.gen.coroutine
     def get(self, siteid, out_trade_no, *args, **kwargs):
         appid = self.get_argument('appid')
@@ -108,7 +105,7 @@ class OrderHandler(SiteHandler):
             'out_trade_no': out_trade_no,
             'nonce_str': security.nonce_str(),
         }
-        req_key = model.Appinfo(appinfo).get_apikey()
+        req_key = wrapper.Appinfo(appinfo).get_apikey()
         req_data['sign'] = security.build_sign(req_data, req_key)
 
         try:

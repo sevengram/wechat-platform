@@ -35,10 +35,13 @@ class WechatMsgHandler(BaseHandler):
                 ('Content', 'content'),
                 ('MsgId', 'msg_id')]
         )
+        appid = self.storage.get_app_info(openid=post_args['ToUserName'], select_key='appid')
         req_data.update(
             {
-                'appid': self.storage.get_app_info(openid=post_args['ToUserName'], select_key='appid'),
-                'unionid': req_data['openid'],  # TODO: from db
+                'appid': appid,
+                'unionid': self.storage.get_user_info(appid=appid,
+                                                      openid=req_data['openid'],
+                                                      select_key='unionid'),
                 'nonce_str': security.nonce_str()
             }
         )

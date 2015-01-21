@@ -1,8 +1,5 @@
 # -*- coding: utf-8 -*-
 
-import hashlib
-import time
-
 from util import xmltodict
 
 
@@ -27,17 +24,3 @@ def dict2xml(dic):
 
 def xml2dict(xml):
     return xmltodict.parse(xml)['xml']
-
-
-def get_redis_key(table, data, keys):
-    p = [(k.decode('utf8'), v.decode('utf8')) if type(v) is str else
-         (k.decode('utf8'), unicode(v))
-         for k, v in sorted(data.items()) if v and k in keys]
-    return hashlib.md5(
-        table + ':' + '&'.join([(k + u'=' + v).encode('utf8') for k, v in p])).hexdigest().upper()
-
-
-def text_response(touser, text, tag):
-    response = {'ToUserName': touser, 'FromUserName': 'gh_c008a36d9e93', 'CreateTime': int(
-        time.time()), 'MsgType': 'text', 'Content': text, 'Tag': tag}  # TODO: hardcode
-    return dict2xml(response)

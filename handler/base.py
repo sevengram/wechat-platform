@@ -5,9 +5,9 @@ import sys
 import tornado.web
 import tornado.gen
 
-from util import storage
+import storage
 from util import security
-from consts import errcode as err
+from consts import errno as err
 
 
 class BaseHandler(tornado.web.RequestHandler):

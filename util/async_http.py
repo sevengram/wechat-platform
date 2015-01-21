@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-from collections import defaultdict
 import json
 import urllib
 
@@ -10,11 +9,11 @@ import tornado.httpclient
 from util import dtools
 
 
-type_methods = defaultdict(lambda: urllib.urlencode, {
+type_methods = {
     'json': json.dumps,
     'xml': dtools.dict2xml,
     'form': urllib.urlencode
-})
+}
 
 
 @tornado.gen.coroutine

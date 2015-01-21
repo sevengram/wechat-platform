@@ -6,8 +6,8 @@ import tornado.web
 import tornado.gen
 import tornado.httpclient
 
-import model
-import consts.errcode as err
+import wrapper
+import consts.errno as err
 from handler.base import BaseHandler
 from util import dtools
 from util import security
@@ -36,18 +36,19 @@ class WechatPayHandler(BaseHandler):
                    'total_fee',
                    'openid',
                    'transaction_id',
-                   'attach',
                    'time_end']
         )
         req_data.update(
             {
-                'unionid': req_data['openid'],  # TODO: from db
+                'unionid': self.storage.get_user_info(appid=req_data['appid'],
+                                                      openid=req_data['openid'],
+                                                      select_key='unionid'),
                 'nonce_str': security.nonce_str()
             }
         )
-        siteid = 'newbuy'  # TODO: code here
-        site_info = self.storage.get_site_info(siteid=siteid)
-        req_key = model.Siteinfo(site_info).get_sitekey()
+        attach = dict([t.split('=') for t in self.post_args['attach'].split(',')])
+        site_info = self.storage.get_site_info(siteid=attach['siteid'])
+        req_key = wrapper.Siteinfo(site_info).get_sitekey()
         req_data['sign'] = security.build_sign(req_data, req_key)
 
         try:
@@ -70,7 +71,7 @@ class WechatPayHandler(BaseHandler):
     def get_check_key(self, refer_dict):
         appid = refer_dict['appid']
         appinfo = self.storage.get_app_info(appid=appid)
-        return model.Appinfo(appinfo).get_apikey()
+        return wrapper.Appinfo(appinfo).get_apikey()
 
     def send_response(self, data=None, err_code=0, err_msg=''):
         if not data:

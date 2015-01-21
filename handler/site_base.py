@@ -5,14 +5,14 @@ import json
 from tornado.web import HTTPError
 
 from consts.key import magento_sitekey
-from consts.errcode import wechat_map
-from consts import errcode as err
+from consts.errno import wechat_map
+from consts import errno as err
 from handler.base import BaseHandler
 from util import dtools
 from util import security
 
 
-class SiteHandler(BaseHandler):
+class SiteBaseHandler(BaseHandler):
     def head(self, *args, **kwargs):
         raise HTTPError(405)
 

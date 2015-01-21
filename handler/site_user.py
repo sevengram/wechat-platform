@@ -1,17 +1,18 @@
 # -*- coding: utf-8 -*-
+
 import hashlib
 import time
 
 import tornado.gen
 import tornado.httpclient
 
-import model
+import wrapper
 from consts import url
 from util import async_http as ahttp
-from handler.site.site import SiteHandler
+from handler.site_base import SiteBaseHandler
 
 
-class UserHandler(SiteHandler):
+class UserHandler(SiteBaseHandler):
     @tornado.gen.coroutine
     def post(self, siteid, *args, **kwargs):
         yield self.put(siteid)
@@ -27,7 +28,7 @@ class UserHandler(SiteHandler):
         req_data1 = {
             'code': self.get_argument('code'),
             'appid': appid,
-            'secret': model.Appinfo(appinfo).get_secret(),
+            'secret': wrapper.Appinfo(appinfo).get_secret(),
             'grant_type': 'authorization_code',
         }
         try:
@@ -62,6 +63,4 @@ class UserHandler(SiteHandler):
                                       utime=int(time.time()),
                                       lang=post_resp_data.get('language', ''))
                     self.storage.add_user_info(saved_data, noninsert=['privilege', 'language'])
-            if not 'unionid' in post_resp_data:
-                post_resp_data['unionid'] = post_resp_data['openid']
             self.send_response(post_resp_data)
