@@ -7,6 +7,7 @@ err_map = defaultdict(lambda: ('FAIL', 'ERROR'), {
     1: ('FAIL', 'ERROR'),
     1001: ('SYSTEMERROR', u'wechat通讯错误'),
     1002: ('NOTWECHAT', u'wechat签名错误'),
+    1003: ('ACCESSERROR', u'获取access_token时AppSecret错误，或者access_token无效'),
     2001: ('INVALIDCODE', u'不合法的oauth_code'),
     3001: ('NOTENOUGH', u'用户余额不足'),
     3101: ('ORDERPAID', u'商户订单已支付'),
@@ -15,11 +16,11 @@ err_map = defaultdict(lambda: ('FAIL', 'ERROR'), {
     3104: ('ORDERNOTEXIST', u'此交易订单号不存在'),
     3201: ('APPID_NOT_EXIST', u'APPID不存在'),
     3301: ('TRANSACTION_ID_INVALID', u'订单号非法'),
-    7001: ('ACCESSERROR', u'获取access_token时AppSecret错误，或者access_token无效'),
     8001: ('SIGNERROR', u'签名错误'),
     8002: ('NOSIGN', u'找不到授权签名'),
     9001: ('OTHERS', u'其他错误'),
-    9002: ('NETWORKERROR', u'网络请求失败')
+    9002: ('NETWORKERROR', u'网络请求失败'),
+    9101: ('JSONERROR', u'JSON数据错误')
 })
 
 simple_map = defaultdict(lambda: ('FAIL', 'ERROR'), {
@@ -32,7 +33,7 @@ alias_map = {v1: k for k, (v1, v2) in err_map.iteritems()}
 wechat_map = defaultdict(lambda: (9001, '请求失败'), {
     -1: (1001, '系统繁忙，此时请开发者稍候再试'),
     0: (0, '请求成功'),
-    40001: (7001, '获取access_token时AppSecret错误，或者access_token无效。请开发者认真比对AppSecret的正确性，或查看是否正在为恰当的公众号调用接口'),
+    40001: (1003, '获取access_token时AppSecret错误，或者access_token无效。请开发者认真比对AppSecret的正确性，或查看是否正在为恰当的公众号调用接口'),
     40002: (9001, '不合法的凭证类型'),
     40003: (9001, '不合法的OpenID，请开发者确认OpenID（该用户）是否已关注公众号，或是否是其他公众号的OpenID'),
     40004: (9001, '不合法的媒体文件类型'),

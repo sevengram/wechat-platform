@@ -1,38 +1,37 @@
 # -*- coding: utf-8 -*-
 
 import json
-import sys
 
 from tornado.web import HTTPError
 
 from consts.key import magento_sitekey
 from consts.errcode import wechat_map
 from consts import errcode as err
-from handler.common import CommonHandler
+from handler.base import BaseHandler
 from util import dtools
 from util import security
 
 
-class SiteBaseHandler(CommonHandler):
-    def head(self, siteid, *args, **kwargs):
+class SiteHandler(BaseHandler):
+    def head(self, *args, **kwargs):
         raise HTTPError(405)
 
-    def get(self, siteid, *args, **kwargs):
+    def get(self, *args, **kwargs):
         raise HTTPError(405)
 
-    def post(self, siteid, *args, **kwargs):
+    def post(self, *args, **kwargs):
         raise HTTPError(405)
 
-    def delete(self, siteid, *args, **kwargs):
+    def delete(self, *args, **kwargs):
         raise HTTPError(405)
 
-    def patch(self, siteid, *args, **kwargs):
+    def patch(self, *args, **kwargs):
         raise HTTPError(405)
 
-    def put(self, siteid, *args, **kwargs):
+    def put(self, *args, **kwargs):
         raise HTTPError(405)
 
-    def options(self, siteid, *args, **kwargs):
+    def options(self, *args, **kwargs):
         raise HTTPError(405)
 
     def get_check_key(self, refer_dict):
@@ -55,20 +54,12 @@ class SiteBaseHandler(CommonHandler):
             return None
         return resp_data
 
-    def parse_oauth_resp(self, resp, default_data=None):
+    def parse_oauth_resp(self, resp):
         if resp.code != 200:
-            if not default_data:
-                self.send_response(err_code=1001, err_msg='wechat %d' % resp.code)
-                return None
-            else:
-                self.send_response(default_data)
-                return None
+            self.send_response(err_code=1001, err_msg='wechat %d' % resp.code)
+            return None
         resp_data = json.loads(resp.body)
         if resp_data.get('errcode'):
-            if not default_data:
-                self.send_response(None, *wechat_map[int(resp_data.get('errcode'))])
-                return None
-            else:
-                self.send_response(default_data)
-                return None
+            self.send_response(None, *wechat_map[int(resp_data.get('errcode'))])
+            return None
         return resp_data

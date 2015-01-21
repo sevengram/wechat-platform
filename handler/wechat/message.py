@@ -3,12 +3,11 @@
 import time
 import hashlib
 
-import pyexpat
 import tornado.web
 import tornado.gen
 import tornado.httpclient
 
-from handler.common import CommonHandler
+from handler.base import BaseHandler
 from consts.key import magento_sitekey
 from util import security
 from util import dtools
@@ -19,7 +18,7 @@ def get_coupon(openid):
     return hashlib.md5(openid).hexdigest()[:8]
 
 
-class WechatMsgHandler(CommonHandler):
+class WechatMsgHandler(BaseHandler):
     @tornado.gen.coroutine
     def get(self):
         self.write(self.get_argument('echostr', 'get ok'))
@@ -27,10 +26,7 @@ class WechatMsgHandler(CommonHandler):
 
     @tornado.gen.coroutine
     def post(self):
-        try:
-            post_args = dtools.xml2dict(self.request.body)
-        except pyexpat.ExpatError:
-            raise tornado.web.HTTPError(400)
+        post_args = dtools.xml2dict(self.request.body)
         req_data = dtools.transfer(
             post_args,
             renames=[
@@ -89,6 +85,6 @@ class WechatMsgHandler(CommonHandler):
     def get_check_key(self, refer_dict):
         return 'ilovedeepsky'
 
-    def send_response(self, data):
+    def send_response(self, data=None, err_code=0, err_msg=''):
         self.write(dtools.dict2xml(data))
         self.finish()

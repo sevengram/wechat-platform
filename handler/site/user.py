@@ -1,15 +1,17 @@
 # -*- coding: utf-8 -*-
+import hashlib
+import time
 
-import model
 import tornado.gen
 import tornado.httpclient
 
+import model
 from consts import url
 from util import async_http as ahttp
-from handler.site.base import SiteBaseHandler
+from handler.site.site import SiteHandler
 
 
-class UserHandler(SiteBaseHandler):
+class UserHandler(SiteHandler):
     @tornado.gen.coroutine
     def post(self, siteid, *args, **kwargs):
         yield self.put(siteid)
@@ -24,7 +26,7 @@ class UserHandler(SiteBaseHandler):
 
         req_data1 = {
             'code': self.get_argument('code'),
-            'appid': self.get_argument('appid'),
+            'appid': appid,
             'secret': model.Appinfo(appinfo).get_secret(),
             'grant_type': 'authorization_code',
         }
@@ -35,28 +37,31 @@ class UserHandler(SiteBaseHandler):
             raise tornado.gen.Return()
 
         resp_data1 = self.parse_oauth_resp(resp1)
-        if not resp_data1:
-            raise tornado.gen.Return()
-
-        post_resp_data = {
-            'openid': resp_data1['openid'],
-            'unionid': resp_data1['openid'],
-            'appid': self.get_argument('appid')
-        }
-        if 'snsapi_userinfo' in [v.strip() for v in resp_data1['scope'].split(',')]:
-            req_data2 = {
-                'access_token': resp_data1['access_token'],
+        if resp_data1:
+            post_resp_data = {
                 'openid': resp_data1['openid'],
-                'lang': 'zh_CN'
+                'appid': self.get_argument('appid')
             }
-            try:
-                resp2 = yield ahttp.get_dict(url=url.oauth_userinfo, data=req_data2)
-            except tornado.httpclient.HTTPError:
-                self.send_response(err_code=1001)
-                raise tornado.gen.Return()
-
-            resp_data2 = self.parse_oauth_resp(resp2, default_data=post_resp_data)
-            if not resp_data2:
-                raise tornado.gen.Return()
-            post_resp_data.update(resp_data2)
-        self.send_response(post_resp_data)
+            if 'snsapi_userinfo' in [v.strip() for v in resp_data1['scope'].split(',')]:
+                req_data2 = {
+                    'access_token': resp_data1['access_token'],
+                    'openid': resp_data1['openid'],
+                    'lang': 'zh_CN'
+                }
+                try:
+                    resp2 = yield ahttp.get_dict(url=url.oauth_userinfo, data=req_data2)
+                except tornado.httpclient.HTTPError:
+                    self.send_response(err_code=1001)
+                    raise tornado.gen.Return()
+                resp_data2 = self.parse_oauth_resp(resp2)
+                if resp_data2:
+                    post_resp_data.update(resp_data2)
+                    saved_data = dict(post_resp_data,
+                                      uid=hashlib.md5(
+                                          post_resp_data['appid'] + '_' + post_resp_data['openid']).hexdigest(),
+                                      utime=int(time.time()),
+                                      lang=post_resp_data.get('language', ''))
+                    self.storage.add_user_info(saved_data, noninsert=['privilege', 'language'])
+            if not 'unionid' in post_resp_data:
+                post_resp_data['unionid'] = post_resp_data['openid']
+            self.send_response(post_resp_data)

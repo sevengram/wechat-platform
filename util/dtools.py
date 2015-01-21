@@ -39,5 +39,5 @@ def get_redis_key(table, data, keys):
 
 def text_response(touser, text, tag):
     response = {'ToUserName': touser, 'FromUserName': 'gh_c008a36d9e93', 'CreateTime': int(
-        time.time()), 'MsgType': 'text', 'Content': text, 'Tag': tag}
+        time.time()), 'MsgType': 'text', 'Content': text, 'Tag': tag}  # TODO: hardcode
     return dict2xml(response)

@@ -2,31 +2,26 @@
 
 import json
 
-import pyexpat
-import sys
 import tornado.web
 import tornado.gen
 import tornado.httpclient
 
 import model
 import consts.errcode as err
-from handler.common import CommonHandler
+from handler.base import BaseHandler
 from util import dtools
 from util import security
 from util import async_http as ahttp
 
 
-class WechatPayHandler(CommonHandler):
+class WechatPayHandler(BaseHandler):
     def initialize(self, sign_check=False):
         super(WechatPayHandler, self).initialize(sign_check)
         self.post_args = {}
 
     @tornado.gen.coroutine
     def prepare(self):
-        try:
-            self.post_args = dtools.xml2dict(self.request.body)
-        except pyexpat.ExpatError:
-            raise tornado.web.HTTPError(400)
+        self.post_args = dtools.xml2dict(self.request.body)
         if self.sign_check:
             self.check_signature(self.post_args)
 
@@ -62,9 +57,13 @@ class WechatPayHandler(CommonHandler):
         except tornado.httpclient.HTTPError:
             self.send_response(err_code=9002)
             return
+
         if resp.code == 200:
-            resp_data = json.loads(resp.body)
-            self.send_response(err_code=err.alias_map.get(resp_data.get('return_code'), 9001))
+            try:
+                resp_data = json.loads(resp.body)
+                self.send_response(err_code=err.alias_map.get(resp_data.get('return_code'), 9001))
+            except ValueError:
+                self.send_response(err_code=9101)
         else:
             self.send_response(err_code=9002)
 

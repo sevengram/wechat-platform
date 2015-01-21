@@ -10,10 +10,11 @@ from util import security
 from consts import errcode as err
 
 
-class CommonHandler(tornado.web.RequestHandler):
+class BaseHandler(tornado.web.RequestHandler):
     def initialize(self, sign_check=False):
         self.sign_check = sign_check
-        self.storage = storage.WechatStorage(host='newbuy01.mysql.rds.aliyuncs.com', user='wechat_admin',
+        self.storage = storage.WechatStorage(host='newbuy01.mysql.rds.aliyuncs.com',
+                                             user='wechat_admin',
                                              passwd='_WecAd456')
 
     @tornado.gen.coroutine
@@ -38,7 +39,7 @@ class CommonHandler(tornado.web.RequestHandler):
                 'err_alias': err.err_map[err_code][0],
                 'err_msg': err_msg or err.err_map[err_code][1],
                 'data': data or ''}
-        print resp  # TODO: debug msg
+        print resp
         sys.stdout.flush()
         self.write(resp)
         self.finish()
