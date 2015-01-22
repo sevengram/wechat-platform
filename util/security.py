@@ -23,7 +23,7 @@ def nonce_str():
     return str(random.random())[2:]
 
 
-def check_sign(data, key, method='md5'):
+def check_sign(data, key, method):
     if method == 'md5':
         sign = data.get('sign')
         nonce_key = 'nonce_str'

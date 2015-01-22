@@ -20,22 +20,27 @@ def get_coupon(openid):
 
 class WechatMsgHandler(BaseHandler):
     @tornado.gen.coroutine
+    def prepare(self):
+        if self.sign_check:
+            self.check_signature({k: v[0] for k, v in self.request.arguments.iteritems() if v}, method='sha1')
+
+    @tornado.gen.coroutine
     def get(self):
         self.write(self.get_argument('echostr', 'get ok'))
         self.finish()
 
     @tornado.gen.coroutine
     def post(self):
-        post_args = dtools.xml2dict(self.request.body)
+        self.post_args = dtools.xml2dict(self.request.body)
         req_data = dtools.transfer(
-            post_args,
+            self.post_args,
             renames=[
                 ('FromUserName', 'openid'),
                 ('MsgType', 'msg_type'),
                 ('Content', 'content'),
                 ('MsgId', 'msg_id')]
         )
-        appid = self.storage.get_app_info(openid=post_args['ToUserName'], select_key='appid')
+        appid = self.storage.get_app_info(openid=self.post_args['ToUserName'], select_key='appid')
         req_data.update(
             {
                 'appid': appid,
@@ -77,13 +82,10 @@ class WechatMsgHandler(BaseHandler):
         post_resp_data.update(
             {
                 'CreateTime': int(time.time()),
-                'FromUserName': post_args['ToUserName']
+                'FromUserName': self.post_args['ToUserName']
             }
         )
         self.send_response(post_resp_data)
-
-    def check_signature(self, refer_dict, method='sha1'):
-        super(WechatMsgHandler, self).check_signature(refer_dict, method)
 
     def get_check_key(self, refer_dict):
         return 'ilovedeepsky'

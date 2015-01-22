@@ -6,7 +6,6 @@ import tornado.web
 import tornado.gen
 import tornado.httpclient
 
-import wrapper
 from util import dtools
 from util import security
 from util import async_http as ahttp
@@ -60,7 +59,7 @@ class PrepayHandler(SiteBaseHandler):
                 'notify_url': url.payment_notify,
             }
         )
-        req_key = wrapper.Appinfo(appinfo).get_apikey()
+        req_key = appinfo['apikey']
         req_data['sign'] = security.build_sign(req_data, req_key)
 
         try:
@@ -101,11 +100,11 @@ class OrderHandler(SiteBaseHandler):
         req_data = {
             'appid': appid,
             'mch_id': appinfo.get('mch_id'),
-            'transaction_id': '',  # TODO: from db
+            'transaction_id': '',
             'out_trade_no': out_trade_no,
             'nonce_str': security.nonce_str(),
         }
-        req_key = wrapper.Appinfo(appinfo).get_apikey()
+        req_key = appinfo['apikey']
         req_data['sign'] = security.build_sign(req_data, req_key)
 
         try:

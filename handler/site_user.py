@@ -1,12 +1,10 @@
 # -*- coding: utf-8 -*-
 
 import hashlib
-import time
 
 import tornado.gen
 import tornado.httpclient
 
-import wrapper
 from consts import url
 from util import async_http as ahttp
 from handler.site_base import SiteBaseHandler
@@ -28,7 +26,7 @@ class UserHandler(SiteBaseHandler):
         req_data1 = {
             'code': self.get_argument('code'),
             'appid': appid,
-            'secret': wrapper.Appinfo(appinfo).get_secret(),
+            'secret': appinfo['secret'],
             'grant_type': 'authorization_code',
         }
         try:
@@ -49,6 +47,7 @@ class UserHandler(SiteBaseHandler):
                     'openid': resp_data1['openid'],
                     'lang': 'zh_CN'
                 }
+                # TODO: check db first
                 try:
                     resp2 = yield ahttp.get_dict(url=url.oauth_userinfo, data=req_data2)
                 except tornado.httpclient.HTTPError:
@@ -60,7 +59,6 @@ class UserHandler(SiteBaseHandler):
                     saved_data = dict(post_resp_data,
                                       uid=hashlib.md5(
                                           post_resp_data['appid'] + '_' + post_resp_data['openid']).hexdigest(),
-                                      utime=int(time.time()),
                                       lang=post_resp_data.get('language', ''))
                     self.storage.add_user_info(saved_data, noninsert=['privilege', 'language'])
             self.send_response(post_resp_data)

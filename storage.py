@@ -85,8 +85,7 @@ class WechatStorage(Storage):
 
     def add_user_info(self, user, noninsert=None):
         self.replace('wechat_user_info', user,
-                     noninsert=noninsert,
-                     nonupdate=['utime'])
+                     noninsert=noninsert)
 
     def get_app_info(self, appid='', openid='', select_key='*'):
         return self.get('wechat_app_info',
@@ -102,3 +101,12 @@ class WechatStorage(Storage):
         return self.get('wechat_user_info',
                         {'appid': appid, 'openid': openid, 'unionid': unionid},
                         select_key=select_key)
+
+
+wechat_storage = WechatStorage(host='newbuy01.mysql.rds.aliyuncs.com',
+                               user='wechat_admin',
+                               passwd='_WecAd456')
+
+# wechat_storage = WechatStorage(host='127.0.0.1',
+#                                user='root',
+#                                passwd='eboue')

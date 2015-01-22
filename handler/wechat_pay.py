@@ -6,8 +6,7 @@ import tornado.web
 import tornado.gen
 import tornado.httpclient
 
-import wrapper
-import consts.errno as err
+from consts import errno
 from handler.base import BaseHandler
 from util import dtools
 from util import security
@@ -15,15 +14,11 @@ from util import async_http as ahttp
 
 
 class WechatPayHandler(BaseHandler):
-    def initialize(self, sign_check=False):
-        super(WechatPayHandler, self).initialize(sign_check)
-        self.post_args = {}
-
     @tornado.gen.coroutine
     def prepare(self):
         self.post_args = dtools.xml2dict(self.request.body)
         if self.sign_check:
-            self.check_signature(self.post_args)
+            self.check_signature(self.post_args, method='md5')
 
     @tornado.gen.coroutine
     def post(self):
@@ -48,7 +43,7 @@ class WechatPayHandler(BaseHandler):
         )
         attach = dict([t.split('=') for t in self.post_args['attach'].split(',')])
         site_info = self.storage.get_site_info(siteid=attach['siteid'])
-        req_key = wrapper.Siteinfo(site_info).get_sitekey()
+        req_key = site_info['sitekey']
         req_data['sign'] = security.build_sign(req_data, req_key)
 
         try:
@@ -62,22 +57,20 @@ class WechatPayHandler(BaseHandler):
         if resp.code == 200:
             try:
                 resp_data = json.loads(resp.body)
-                self.send_response(err_code=err.alias_map.get(resp_data.get('return_code'), 9001))
+                self.send_response(err_code=errno.alias_map.get(resp_data.get('return_code'), 9001))
             except ValueError:
                 self.send_response(err_code=9101)
         else:
             self.send_response(err_code=9002)
 
     def get_check_key(self, refer_dict):
-        appid = refer_dict['appid']
-        appinfo = self.storage.get_app_info(appid=appid)
-        return wrapper.Appinfo(appinfo).get_apikey()
+        return self.storage.get_app_info(appid=refer_dict['appid'], select_key='apikey')
 
     def send_response(self, data=None, err_code=0, err_msg=''):
         if not data:
             data = {}
-        data['return_code'] = err.simple_map[err_code][0]
-        data['return_msg'] = err.err_map[err_code][1]
+        data['return_code'] = errno.simple_map[err_code][0]
+        data['return_msg'] = errno.err_map[err_code][1]
         self.write(dtools.dict2xml(data))
         self.finish()
 
