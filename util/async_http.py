@@ -2,7 +2,6 @@
 
 import json
 import urllib
-import sys
 
 import tornado.gen
 import tornado.httpclient
@@ -20,9 +19,9 @@ type_methods = {
 @tornado.gen.coroutine
 def post_dict(url, data, data_type='form'):
     if data_type == 'form':
-        req_data = dtools.dict_encode(data)
+        req_data = dtools.dict_str(data)
     elif data_type == 'xml':
-        req_data = dtools.dict_decode(data)
+        req_data = dtools.dict_unicode(data)
     else:
         req_data = data
     client = tornado.httpclient.AsyncHTTPClient()

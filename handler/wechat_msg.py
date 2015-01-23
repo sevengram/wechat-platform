@@ -1,7 +1,8 @@
 # -*- coding:utf8 -*-
 
+import json
+
 import time
-import hashlib
 import sys
 
 import tornado.web
@@ -10,14 +11,44 @@ import tornado.httpclient
 
 from util import async_http as ahttp
 from handler.base import BaseHandler
-from consts.key import magento_sitekey
 from util import security
 from util import dtools
 
 
-# TODO: should remove
-def get_coupon(openid):
-    return hashlib.md5(openid).hexdigest()[:8]
+def transfer_response(src):
+    result = dtools.transfer(
+        src,
+        renames=[
+            ('to_openid', 'ToUserName'),
+            ('from_openid', 'FromUserName'),
+            ('msg_type', 'MsgType'),
+        ]
+    )
+    msg_type = src['msg_type']
+    if msg_type == 'text':
+        result.update({
+            'Content': src['content'],
+            'CreateTime': int(time.time())
+        })
+    elif msg_type == 'news':
+        result.update({
+            'ArticleCount': len(src['articles']),
+            'Articles': {
+                'item': []
+            },
+            'CreateTime': int(time.time())
+        })
+        for article in src['articles']:
+            item = dtools.transfer(
+                article,
+                renames=[
+                    ('title', 'Title'),
+                    ('description', 'Description'),
+                    ('picurl', 'PicUrl'),
+                    ('url', 'Url')
+                ])
+            result['Articles']['item'].append(item)
+    return result
 
 
 class WechatMsgHandler(BaseHandler):
@@ -37,59 +68,44 @@ class WechatMsgHandler(BaseHandler):
         req_data = dtools.transfer(
             self.post_args,
             renames=[
-                ('FromUserName', 'openid'),
+                ('FromUserName', 'from_openid'),
+                ('ToUserName', 'to_openid'),
                 ('MsgType', 'msg_type'),
                 ('Content', 'content'),
-                ('MsgId', 'msg_id')]
+                ('MsgId', 'msg_id'),
+                ('CreateTime', 'msg_time'),
+                ('Event', 'event_type')]
         )
-        appinfo = self.storage.get_app_info(openid=self.post_args['ToUserName'])
+        appinfo = self.storage.get_app_info(openid=self.post_args['ToUserName'], )
         appid = appinfo['appid']
         req_data.update(
             {
                 'appid': appid,
-                'openid': req_data['openid'],
-                'unionid': self.storage.get_user_info(appid=appid,
-                                                      openid=req_data['openid'],
-                                                      select_key='unionid') or '',
                 'nonce_str': security.nonce_str()
             }
         )
         site_info = self.storage.get_site_info(appinfo['siteid'])
         req_key = site_info['sitekey']
         req_data['sign'] = security.build_sign(req_data, req_key)
+
         try:
             resp = yield ahttp.post_dict(
                 url=site_info['msg_notify_url'],
                 data=req_data)
         except tornado.httpclient.HTTPError:
             self.send_response(err_code=9002)
-            return
-        # if resp.code == 200:
-        #     resp_data = json.loads(resp.body)
-        #     self.send_response(err_code=err.alias_map.get(resp_data.get('return_code'), 9001))
-        # else:
-        #     self.send_response(err_code=9002)
-        # TODO: test data
-        resp_data = {
-            'appid': 'wx7394ce44a23b3225',
-            'openid': req_data['openid'],
-            'msg_type': 'text',
-            'content': get_coupon(req_data['openid'])  # TODO: from upstream
-        }
-        post_resp_data = dtools.transfer(
-            resp_data,
-            renames=[
-                ('openid', 'ToUserName'),
-                ('msg_type', 'MsgType'),
-                ('content', 'Content')]
-        )
-        post_resp_data.update(
-            {
-                'CreateTime': int(time.time()),
-                'FromUserName': self.post_args['ToUserName']
-            }
-        )
-        self.send_response(post_resp_data)
+            raise tornado.gen.Return()
+
+        if resp.code != 200:
+            self.send_response(err_code=9002)
+            raise tornado.gen.Return()
+
+        try:
+            resp_data = json.loads(resp.body)
+            # TODO: check resp
+            self.send_response(transfer_response(resp_data.get('data')))
+        except ValueError:
+            self.send_response(err_code=9101)
 
     def get_check_key(self, refer_dict):
         return 'wechat_platform'

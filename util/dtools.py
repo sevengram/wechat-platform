@@ -26,9 +26,9 @@ def xml2dict(xml):
     return xmltodict.parse(xml)['xml']
 
 
-def dict_decode(src, encoding='utf8'):
+def dict_unicode(src, encoding='utf8'):
     return {k: v.decode(encoding) if type(v) is str else v for k, v in src.iteritems()}
 
 
-def dict_encode(src, encoding='utf8'):
+def dict_str(src, encoding='utf8'):
     return {k: v.encode(encoding) if type(v) is unicode else v for k, v in src.iteritems()}
