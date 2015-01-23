@@ -2,11 +2,13 @@
 
 import time
 import hashlib
+import sys
 
 import tornado.web
 import tornado.gen
 import tornado.httpclient
 
+from util import async_http as ahttp
 from handler.base import BaseHandler
 from consts.key import magento_sitekey
 from util import security
@@ -40,26 +42,28 @@ class WechatMsgHandler(BaseHandler):
                 ('Content', 'content'),
                 ('MsgId', 'msg_id')]
         )
-        appid = self.storage.get_app_info(openid=self.post_args['ToUserName'], select_key='appid')
+        appinfo = self.storage.get_app_info(openid=self.post_args['ToUserName'])
+        appid = appinfo['appid']
         req_data.update(
             {
                 'appid': appid,
+                'openid': req_data['openid'],
                 'unionid': self.storage.get_user_info(appid=appid,
                                                       openid=req_data['openid'],
-                                                      select_key='unionid'),
+                                                      select_key='unionid') or '',
                 'nonce_str': security.nonce_str()
             }
         )
-        req_key = magento_sitekey  # TODO from db
+        site_info = self.storage.get_site_info(appinfo['siteid'])
+        req_key = site_info['sitekey']
         req_data['sign'] = security.build_sign(req_data, req_key)
-
-        # try:
-        #     resp = yield ahttp.post_dict(
-        #         url='http://msg_notify_url',
-        #         data=req_data)
-        # except tornado.httpclient.HTTPError:
-        #     self.send_response(err_code=9002)
-        #     return
+        try:
+            resp = yield ahttp.post_dict(
+                url=site_info['msg_notify_url'],
+                data=req_data)
+        except tornado.httpclient.HTTPError:
+            self.send_response(err_code=9002)
+            return
         # if resp.code == 200:
         #     resp_data = json.loads(resp.body)
         #     self.send_response(err_code=err.alias_map.get(resp_data.get('return_code'), 9001))
@@ -88,7 +92,7 @@ class WechatMsgHandler(BaseHandler):
         self.send_response(post_resp_data)
 
     def get_check_key(self, refer_dict):
-        return 'ilovedeepsky'
+        return 'wechat_platform'
 
     def send_response(self, data=None, err_code=0, err_msg=''):
         self.write(dtools.dict2xml(data))
