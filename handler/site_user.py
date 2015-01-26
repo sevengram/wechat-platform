@@ -30,7 +30,7 @@ class UserHandler(SiteBaseHandler):
             'grant_type': 'authorization_code',
         }
         try:
-            resp1 = yield ahttp.get_dict(url=url.oauth_access_token, data=req_data1)
+            resp1 = yield ahttp.get_dict(url=url.wechat_oauth_access_token, data=req_data1)
         except tornado.httpclient.HTTPError:
             self.send_response(err_code=1001)
             raise tornado.gen.Return()
@@ -49,7 +49,7 @@ class UserHandler(SiteBaseHandler):
                 }
                 # TODO: check db first
                 try:
-                    resp2 = yield ahttp.get_dict(url=url.oauth_userinfo, data=req_data2)
+                    resp2 = yield ahttp.get_dict(url=url.wechat_oauth_userinfo, data=req_data2)
                 except tornado.httpclient.HTTPError:
                     self.send_response(err_code=1001)
                     raise tornado.gen.Return()

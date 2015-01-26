@@ -39,13 +39,11 @@ def check_sign(data, key, method):
 
 def build_sign(data, key, method='md5'):
     if method == 'md5':
-        p = [(k.decode('utf8'), v.decode('utf8')) if type(v) is str else
-             (k.decode('utf8'), unicode(v))
+        p = [(k, v.decode('utf8')) if type(v) is str else
+             (k, unicode(v))
              for k, v in sorted(data.items()) if v and k != 'sign']
-        if type(key) is unicode:
-            key = key.encode('utf8')
         return hashlib.md5(
-            '&'.join([(k + u'=' + v).encode('utf8') for k, v in p]) + '&key=' + key).hexdigest().upper()
+            (u'&'.join([k + u'=' + v for k, v in p]) + u'&key=' + key).encode('utf8')).hexdigest().upper()
     elif method == 'sha1':
         p = [key, data.get('timestamp', ''), data.get('nonce', '')]
         p.sort()

@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+import urllib
+
 from util import xmltodict
 
 
@@ -17,8 +19,12 @@ def special_encode(text):
     return text.replace('<', '\x00').replace('>', '\x01').replace('&', '\x02')
 
 
+def urlencode(dic):
+    return urllib.urlencode(dict_str(dic))
+
+
 def dict2xml(dic):
-    result = xmltodict.unparse({'xml': dic})
+    result = xmltodict.unparse({'xml': dict_unicode(dic)})
     return special_decode(result[result.index('\n') + 1:])
 
 

@@ -7,8 +7,8 @@ import MySQLdb.cursors
 
 
 def get_redis_key(table, data, keys):
-    p = [(k.decode('utf8'), v.decode('utf8')) if type(v) is str else
-         (k.decode('utf8'), unicode(v))
+    p = [(k, v.decode('utf8')) if type(v) is str else
+         (k, unicode(v))
          for k, v in sorted(data.items()) if v and k in keys]
     return hashlib.md5(
         table + ':' + '&'.join([(k + u'=' + v).encode('utf8') for k, v in p])).hexdigest().upper()

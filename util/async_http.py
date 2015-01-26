@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 import json
-import urllib
 
 import tornado.gen
 import tornado.httpclient
@@ -12,23 +11,17 @@ from util import dtools
 type_methods = {
     'json': json.dumps,
     'xml': dtools.dict2xml,
-    'form': urllib.urlencode
+    'form': dtools.urlencode
 }
 
 
 @tornado.gen.coroutine
 def post_dict(url, data, data_type='form'):
-    if data_type == 'form':
-        req_data = dtools.dict_str(data)
-    elif data_type == 'xml':
-        req_data = dtools.dict_unicode(data)
-    else:
-        req_data = data
     client = tornado.httpclient.AsyncHTTPClient()
     req = tornado.httpclient.HTTPRequest(
         url=url,
         method='POST',
-        body=type_methods.get(data_type)(req_data)
+        body=type_methods.get(data_type)(data)
     )
     resp = yield client.fetch(req)
     raise tornado.gen.Return(resp)
@@ -38,7 +31,7 @@ def post_dict(url, data, data_type='form'):
 def get_dict(url, data):
     client = tornado.httpclient.AsyncHTTPClient()
     req = tornado.httpclient.HTTPRequest(
-        url=url + '?' + urllib.urlencode(data),
+        url=url + '?' + dtools.urlencode(data),
         method='GET'
     )
     resp = yield client.fetch(req)

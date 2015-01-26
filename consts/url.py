@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 
-hosts = "http://wechat.newbuy.cn"
+mch_api_base = "https://api.mch.weixin.qq.com"
 
-payment_notify = hosts + "/notify/payment"
+mch_order_add = mch_api_base + "/pay/unifiedorder"
 
-order_add = "https://api.mch.weixin.qq.com/pay/unifiedorder"
+mch_order_query = mch_api_base + "/pay/orderquery"
 
-order_query = "https://api.mch.weixin.qq.com/pay/orderquery"
+wechat_api_base = "https://api.weixin.qq.com"
 
-oauth_access_token = "https://api.weixin.qq.com/sns/oauth2/access_token"
+wechat_oauth_access_token = wechat_api_base + "/sns/oauth2/access_token"
 
-oauth_userinfo = "https://api.weixin.qq.com/sns/userinfo"
+wechat_oauth_userinfo = wechat_api_base + "/sns/userinfo"

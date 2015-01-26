@@ -56,14 +56,14 @@ class PrepayHandler(SiteBaseHandler):
                 'attach': 'siteid=' + siteid,
                 'mch_id': appinfo.get('mch_id'),
                 'nonce_str': security.nonce_str(),
-                'notify_url': url.payment_notify,
+                'notify_url': self.storage.get_site_info(siteid, select_key='pay_notify_url'),
             }
         )
         req_key = appinfo['apikey']
         req_data['sign'] = security.build_sign(req_data, req_key)
 
         try:
-            resp = yield ahttp.post_dict(url=url.order_add, data=req_data, data_type='xml')
+            resp = yield ahttp.post_dict(url=url.mch_order_add, data=req_data, data_type='xml')
         except tornado.httpclient.HTTPError:
             self.send_response(err_code=1001)
             raise tornado.gen.Return()
@@ -108,7 +108,7 @@ class OrderHandler(SiteBaseHandler):
         req_data['sign'] = security.build_sign(req_data, req_key)
 
         try:
-            resp = yield ahttp.post_dict(url=url.order_query, data=req_data, data_type='xml')
+            resp = yield ahttp.post_dict(url=url.mch_order_query, data=req_data, data_type='xml')
         except tornado.httpclient.HTTPError:
             self.send_response(err_code=1001)
             raise tornado.gen.Return()
