@@ -25,12 +25,13 @@ class NewbuyHandler(BaseHandler):
         if msg_type == 'event' and event_type == 'subscribe':
             post_resp_data.update({
                 'msg_type': 'text',
-                'content': u'您好, 欢迎关注向星-牛掰, 您的优惠码是:' + get_coupon(self.get_argument('to_openid'))
+                'content': u'亲, 你总算来了! 0元领29元极小分子玻尿酸面膜白+黑2片装. 白天敷白片, 不干燥; 晚上敷黑片, 睡得香! '
+                           u'点击菜单"粉丝福利-面膜0元领", 下单输入优惠码"%s"即可!' % get_coupon(self.get_argument('to_openid'))
             })
             self.send_response(post_resp_data)
         else:
             post_resp_data.update({
                 'msg_type': 'text',
-                'content': u'您好, 感谢您关注向星牛掰, 成为光荣de"牛粪"-牛掰粉儿!'
+                'content': u'感谢您关注向星牛掰, 成为光荣de"牛粪"-牛掰粉儿!'
             })
             self.send_response(post_resp_data)

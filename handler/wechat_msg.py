@@ -1,9 +1,7 @@
 # -*- coding:utf8 -*-
 
 import json
-
 import time
-import sys
 
 import tornado.web
 import tornado.gen
@@ -16,6 +14,8 @@ from util import dtools
 
 
 def transfer_response(src):
+    if not src:
+        return None
     result = dtools.transfer(
         src,
         renames=[
@@ -76,7 +76,7 @@ class WechatMsgHandler(BaseHandler):
                 ('CreateTime', 'msg_time'),
                 ('Event', 'event_type')]
         )
-        appinfo = self.storage.get_app_info(openid=self.post_args['ToUserName'], )
+        appinfo = self.storage.get_app_info(openid=self.post_args['ToUserName'])
         appid = appinfo['appid']
         req_data.update(
             {
@@ -102,8 +102,10 @@ class WechatMsgHandler(BaseHandler):
 
         try:
             resp_data = json.loads(resp.body)
-            # TODO: check resp
-            self.send_response(transfer_response(resp_data.get('data')))
+            if resp_data.get('err_code', 1) == 0:
+                self.send_response(transfer_response(resp_data.get('data')))
+            else:
+                self.send_response(err_code=9003)
         except ValueError:
             self.send_response(err_code=9101)
 
@@ -111,5 +113,6 @@ class WechatMsgHandler(BaseHandler):
         return 'wechat_platform'
 
     def send_response(self, data=None, err_code=0, err_msg=''):
-        self.write(dtools.dict2xml(data))
+        if data:
+            self.write(dtools.dict2xml(data))
         self.finish()

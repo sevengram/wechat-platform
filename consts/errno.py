@@ -19,8 +19,9 @@ err_map = defaultdict(lambda: ('FAIL', 'ERROR'), {
     8001: ('SIGNERROR', u'签名错误'),
     8002: ('NOSIGN', u'找不到授权签名'),
     9001: ('OTHERS', u'其他错误'),
-    9002: ('NETWORKERROR', u'网络请求失败'),
-    9101: ('JSONERROR', u'JSON数据错误')
+    9002: ('NETWORK_ERROR', u'网络请求失败'),
+    9003: ('NETWORK_DATA_ERROR', u'网络数据错误'),
+    9101: ('JSON_ERROR', u'JSON数据格式错误')
 })
 
 simple_map = defaultdict(lambda: ('FAIL', 'ERROR'), {
