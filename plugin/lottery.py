@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 import tornado.gen
-import tornado.web
 
 from handler.base import BaseHandler
 

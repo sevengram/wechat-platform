@@ -3,7 +3,6 @@
 import json
 import time
 
-import tornado.web
 import tornado.gen
 import tornado.httpclient
 

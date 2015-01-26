@@ -3,7 +3,6 @@
 import hashlib
 
 import tornado.gen
-import tornado.web
 
 from handler.base import BaseHandler
 
