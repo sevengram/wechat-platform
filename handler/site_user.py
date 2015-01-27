@@ -49,6 +49,7 @@ class UserHandler(SiteBaseHandler):
             self.send_response(err_code=err_code)
         else:
             post_resp_data = user_info_result['data']
+            post_resp_data['appid'] = appid
             self.send_response(data=post_resp_data)
             # Save userinfo to db
             saved_data = dict(post_resp_data,

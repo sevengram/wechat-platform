@@ -15,7 +15,7 @@ def _parse_wechat_resp(resp):
     if resp.code != 200:
         return {'err_code': 1001, 'data': {}}
     resp_data = json.loads(resp.body)
-    errcode = resp_data.get('errcode', 1)
+    errcode = resp_data.get('errcode')
     if errcode:
         wechat_err = errno.wechat_map[int(errcode)]
         return {'err_code': wechat_err[0], 'err_msg': wechat_err[1], 'data': {}}
@@ -67,7 +67,6 @@ def get_user_info(appid, openid, retry=0):
             })
     except tornado.httpclient.HTTPError:
         raise tornado.gen.Return({'err_code': 1001})
-
     result = _parse_wechat_resp(resp)
     if result.get('err_code', 1) == 1004 and retry < 3:
         user_info = yield get_user_info(appid, openid, retry + 1)
