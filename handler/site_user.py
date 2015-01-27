@@ -7,10 +7,27 @@ import tornado.httpclient
 
 from consts import url
 from util import async_http as ahttp
+from util import dtools
 from handler.site_base import SiteBaseHandler
 
 
 class UserHandler(SiteBaseHandler):
+    def get_local_user_info(self, appid, openid):
+        user_info = self.storage.get_user_info(appid=appid, openid=openid)
+        return dtools.transfer(
+            user_info,
+            copys=[
+                'appid',
+                'openid',
+                'unionid',
+                'nickname',
+                'sex',
+                'city',
+                'province',
+                'country',
+                'headimgurl'
+            ]) if user_info else None
+
     @tornado.gen.coroutine
     def post(self, siteid, *args, **kwargs):
         yield self.put(siteid)
@@ -36,18 +53,26 @@ class UserHandler(SiteBaseHandler):
             raise tornado.gen.Return()
 
         resp_data1 = self.parse_oauth_resp(resp1)
+        openid = resp_data1['openid']
         if resp_data1:
             post_resp_data = {
-                'openid': resp_data1['openid'],
-                'appid': self.get_argument('appid')
+                'openid': openid,
+                'appid': appid
             }
+
+            # Search user info from local db
+            local_user_info = self.get_local_user_info(appid, openid)
+            if local_user_info and local_user_info.get('nickname'):
+                post_resp_data.update(local_user_info)
+                self.send_response(post_resp_data)
+                raise tornado.gen.Return()
+
             if 'snsapi_userinfo' in [v.strip() for v in resp_data1['scope'].split(',')]:
                 req_data2 = {
                     'access_token': resp_data1['access_token'],
-                    'openid': resp_data1['openid'],
+                    'openid': openid,
                     'lang': 'zh_CN'
                 }
-                # TODO: check db first
                 try:
                     resp2 = yield ahttp.get_dict(url=url.wechat_oauth_userinfo, data=req_data2)
                 except tornado.httpclient.HTTPError:

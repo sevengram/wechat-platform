@@ -8,6 +8,10 @@ mch_order_query = mch_api_base + "/pay/orderquery"
 
 wechat_api_base = "https://api.weixin.qq.com"
 
+wechat_basic_access_token = wechat_api_base + "/cgi-bin/token"
+
+wechat_basic_userinfo = wechat_api_base + "/cgi-bin/user/info"
+
 wechat_oauth_access_token = wechat_api_base + "/sns/oauth2/access_token"
 
 wechat_oauth_userinfo = wechat_api_base + "/sns/userinfo"

@@ -25,7 +25,7 @@ class NewbuyHandler(BaseHandler):
             post_resp_data.update({
                 'msg_type': 'text',
                 'content': u'亲, 你总算来了! 0元领29元极小分子玻尿酸面膜白+黑2片装. 白天敷白片, 不干燥; 晚上敷黑片, 睡得香! '
-                           u'点击菜单"粉丝福利-面膜0元领", 下单输入优惠码"%s"即可!' % get_coupon(self.get_argument('to_openid'))
+                           u'点击菜单"粉丝福利-面膜0元领", 下单输入优惠码"%s"即可!' % get_coupon(self.get_argument('from_openid'))
             })
             self.send_response(post_resp_data)
         else:

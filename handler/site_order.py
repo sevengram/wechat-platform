@@ -119,6 +119,7 @@ class OrderHandler(SiteBaseHandler):
                 resp_data,
                 copys=[
                     'appid',
+                    'openid',
                     'trade_state',
                     'out_trade_no',
                     'total_fee',

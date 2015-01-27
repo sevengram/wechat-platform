@@ -9,8 +9,8 @@ from tornado.options import define, options
 
 from handler import site_order
 from handler import site_user
-from handler.wechat_msg import WechatMsgHandler
-from handler.wechat_pay import WechatPayHandler
+from handler.wx_msg import WechatMsgHandler
+from handler.wx_pay import WechatPayHandler
 from plugin.lottery import LotteryHandler
 from plugin.newbuy import NewbuyHandler
 
