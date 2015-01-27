@@ -42,7 +42,6 @@ class OrderHandler(SiteBaseHandler):
             renames=[('title', 'body')]
         )
         if not req_data.get('openid'):
-            # search from db
             req_data['openid'] = self.storage.get_user_info(appid=parse_args['appid'],
                                                             unionid=parse_args['unionid'],
                                                             select_key='openid')
