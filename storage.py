@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import hashlib
+import time
 
 import MySQLdb
 import MySQLdb.cursors
@@ -46,7 +47,7 @@ class Storage(object):
         queries = {k: v for k, v in queries.iteritems() if v}
         if not queries:
             return None
-        placeholders = ', '.join(map(lambda n: n + ' = %s', queries.keys()))
+        placeholders = ' and '.join(map(lambda n: n + '=%s', queries.keys()))
         request = 'SELECT %s FROM %s WHERE %s' % (select_key, table, placeholders)
         records = self.execute(request, queries.values())
         if not records:
@@ -73,7 +74,7 @@ class Storage(object):
         columns = ', '.join(insert_dict.keys())
         insert_holders = ', '.join(['%s'] * len(insert_dict))
         update_dict = {k: v for k, v in insert_dict.iteritems() if k not in nonupdate}
-        update_holders = ', '.join(map(lambda n: n + ' = %s', update_dict.keys()))
+        update_holders = ', '.join(map(lambda n: n + '=%s', update_dict.keys()))
         request = 'INSERT INTO %s (%s) VALUES (%s) ON DUPLICATE KEY UPDATE %s' % (
             table, columns, insert_holders, update_holders)
         self.execute(request, insert_dict.values() + update_dict.values())
@@ -86,6 +87,24 @@ class WechatStorage(Storage):
     def add_user_info(self, user, noninsert=None):
         self.replace('wechat_user_info', user,
                      noninsert=noninsert)
+
+    def add_access_token(self, appid, access_token, expires_in):
+        self.replace('wechat_app_token', {
+            'appid': appid,
+            'access_token': access_token,
+            'expires_in': expires_in,
+            'access_token_utime': int(time.time())
+        })
+
+    def get_access_token(self, appid):
+        token_info = self.get('wechat_app_token', {'appid': appid})
+        if token_info:
+            if int(time.time()) - token_info['access_token_utime'] < token_info['expires_in']:
+                return token_info['access_token']
+            else:
+                return ''
+        else:
+            return ''
 
     def get_app_info(self, appid='', openid='', select_key='*'):
         return self.get('wechat_app_info',

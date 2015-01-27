@@ -22,7 +22,8 @@ application = tornado.web.Application(
         (r'/notify/messages', WechatMsgHandler, dict(sign_check=True)),
         (r'/notify/payment', WechatPayHandler, dict(sign_check=True)),
         (r'/sites/(\w+)/users', site_user.UserHandler, dict(sign_check=False)),
-        (r'/sites/(\w+)/orders', site_order.PrepayHandler, dict(sign_check=False)),
+        (r'/sites/(\w+)/users/(\w+)', site_user.UserHandler, dict(sign_check=False)),
+        (r'/sites/(\w+)/orders', site_order.OrderHandler, dict(sign_check=False)),
         (r'/sites/(\w+)/orders/(\w+)', site_order.OrderHandler, dict(sign_check=False)),
         (r'/plugin/newbuy', NewbuyHandler),
         (r'/plugin/lottery', LotteryHandler)

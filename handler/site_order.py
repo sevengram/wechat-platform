@@ -13,7 +13,7 @@ from consts import url
 from handler.site_base import SiteBaseHandler
 
 
-class PrepayHandler(SiteBaseHandler):
+class OrderHandler(SiteBaseHandler):
     @tornado.gen.coroutine
     def post(self, siteid, *args, **kwargs):
         parse_args = self.assign_arguments(
@@ -88,7 +88,6 @@ class PrepayHandler(SiteBaseHandler):
             self.send_response(post_resp_data)
 
 
-class OrderHandler(SiteBaseHandler):
     @tornado.gen.coroutine
     def get(self, siteid, out_trade_no, *args, **kwargs):
         appid = self.get_argument('appid')
