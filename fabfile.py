@@ -50,7 +50,7 @@ def ship(branch, commit):
             if run_test():  # Re-test
                 print 'Rollback OK!'
             else:
-                print 'Danger!! Fail to rollback!'
+                print 'Danger! Fail to rollback!'
 
 
 def sync_repo(remote, commit, directory):
