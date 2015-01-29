@@ -28,11 +28,11 @@ def ship(branch, commit):
     user_roles = ['wechat@%s' % level for level in level_map[branch]]
 
     # 0. Local jobs
-    # Do nothing
+    print 'Start local jobs...'
 
     if root_roles and user_roles:
         # 1. Pre-deploy
-        # Do nothing
+        print 'Start deploying...'
 
         # 2. Deploy
         old_commit_map = execute(sync_repo, remote_path, commit, code_dir, roles=user_roles)
