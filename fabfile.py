@@ -1,71 +1,70 @@
-from fabric.api import *
-from fabric.operations import put
-from fabric.contrib.project import rsync_project
-import datetime
-import uuid
+# -*- coding: utf-8 -*-
 
-# env.hosts = ['iscls']
-# env.user = 'web'
-# env.use_ssh_config = True
-# env.key_filename = '~/.ssh/id_rsa'
-env.colorize_errors = True
+from collections import defaultdict
+
+from fabric.api import run, env, execute, task, cd
 
 
-def deploy(name):
-    print "Hello %s" % name
+env.roledefs = {
+    'root@qa': ['root@newbuy-qa-wechat01'],
+    'root@prod': ['root@newbuy-prod-wechat01'],
+    'wechat@qa': ['wechat@newbuy-qa-wechat01'],
+    'wechat@prod': ['wechat@newbuy-prod-wechat01']
+}
+env.key_filename = '~/.ssh/id_rsa'
 
-# @task(alias='dc')
-# def deploy_compiled_code():
-#     rsync_project('/home/web/projects/iscls', exclude=['.DS_Store', '.idea', '__pycache__',
-#                                                        '.git', '.gitignore',
-#                                                        '.sass-cache', 'compass',
-#                                                        'bower_components',
-#                                                        '*.pyc', 'fabfile.py', 'simple_db.bin'])
-#
-#
-# @task(alias='i')
-# def install_python_library():
-#     put('meta/dependency/python/requirements.txt', '.')
-#     with prefix('workon web'):
-#         run('pip install -r requirements.txt')
-#     run('rm requirements.txt')
-#
-# @task(alias='dn')
-# def deploy_nginx_site_config():
-#     put('meta/dependency/nginx/nginx.conf', '/etc/nginx/', use_sudo=True)
-#     put('meta/dependency/nginx/metaroll.conf', '/etc/nginx/sites-enabled/', use_sudo=True)
-#
-# @task(alias='rn')
-# def restart_nginx():
-#     sudo('service nginx restart')
-#
-# @task(alias='ds')
-# def deploy_supervisor_config():
-#     put('meta/dependency/supervisor/iscls.conf', '/etc/supervisor/conf.d/', use_sudo=True)
-#
-# @task(alias='rs')
-# def restart_supervisor():
-#     sudo('supervisorctl reread')
-#     sudo('supervisorctl update')
-#     sudo('supervisorctl restart iscls')
-#
-# @task(alias='ccp')
-# def compile_compass():
-#     local('compass compile compass')
-#
-#
-# @task(alias='dds')
-# def deploy_database_script():
-#     put('meta/service/database_backup.py', 'projects/iscls/metaroll/')
-#
-#
-# @task(alias='bd')
-# def backup_database():
-#     today = str(datetime.date.today())
-#     suffix = str(uuid.uuid4())[:5]
-#     get('projects/iscls/metaroll/simple_db.bin', '~/backup/db-{}-{}.bin'.format(today, suffix))
-#
-#
-# @task(alias='sd')
-# def restore_database():
-#     local('ls')
+level_map = defaultdict(lambda: [], {
+    'master': ['prod'],
+    'dev': ['qa']
+})
+
+remote_path = 'git@newbuy-dev:common/wechat.git'
+code_dir = '/home/wechat/service'
+
+
+@task
+def ship(branch, commit):
+    root_roles = ['root@%s' % level for level in level_map[branch]]
+    user_roles = ['wechat@%s' % level for level in level_map[branch]]
+
+    # 0. Local jobs
+    # Do nothing
+
+    if root_roles and user_roles:
+        # 1. Pre-deploy
+        # Do nothing
+
+        # 2. Deploy
+        old_commit_map = execute(sync_repo, remote_path, commit, code_dir, roles=user_roles)
+        execute(reload_service, roles=root_roles)
+
+        # 3. Post-deploy
+        if run_test():
+            print 'Awesome!'
+        else:
+            print 'No good! Start rolling back!'
+            # Rollback
+            for host, commit in old_commit_map.iteritems():
+                execute(sync_repo, remote_path, commit, code_dir, host=host)
+            execute(reload_service, roles=root_roles)
+            if run_test():  # Re-test
+                print 'Rollback OK!'
+            else:
+                print 'Danger!! Fail to rollback!'
+
+
+def sync_repo(remote, commit, directory):
+    with cd(directory):
+        old_commit = run('git rev-parse HEAD')
+        run('git reset --hard && git clean -fdx && git remote set-url origin %s' % remote)
+        run('git fetch origin && git checkout %s' % commit)
+        return old_commit
+
+
+def reload_service():
+    run('supervisorctl restart wechat:')
+
+
+def run_test():
+    # Do nothing
+    return True
