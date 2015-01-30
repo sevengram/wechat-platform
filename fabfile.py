@@ -88,7 +88,7 @@ def sync_repo(remote, commit, directory):
         with settings(warn_only=True):
             r1 = run('git rev-parse HEAD')
             if r1.failed:
-                print 'Fail to get HEAD!'
+                print 'Fail to parse HEAD!'
                 return {'error': 1, 'old_commit': ''}
             r2 = run('git reset --hard && '
                      'git clean -fdx && '
