@@ -32,7 +32,7 @@ def ship(branch, commit):
 
     if root_roles and user_roles:
         # 1. Pre-deploy
-        print 'Start deploying...'
+        print 'Start deploying......'
 
         # 2. Deploy
         sync_result = execute(sync_repo, remote_path, commit, code_dir, roles=user_roles)
