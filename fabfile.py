@@ -13,7 +13,7 @@ env.roledefs = {
 }
 env.key_filename = '~/.ssh/id_rsa'
 
-level_map = defaultdict(lambda: [], {
+level_map = defaultdict(lambda: ['prod'], {
     'master': ['prod'],
     'dev': ['qa']
 })
