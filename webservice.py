@@ -11,6 +11,7 @@ from handler import site_order
 from handler import site_user
 from handler.wx_msg import WechatMsgHandler
 from handler.wx_pay import WechatPayHandler
+from plugin.meduo import MeduoUserHandler
 from plugin.lottery import LotteryHandler
 from plugin.newbuy import NewbuyHandler
 
@@ -26,7 +27,8 @@ application = tornado.web.Application(
         (r'/sites/(\w+)/orders', site_order.OrderHandler, dict(sign_check=False)),
         (r'/sites/(\w+)/orders/(\w+)', site_order.OrderHandler, dict(sign_check=False)),
         (r'/plugin/newbuy', NewbuyHandler),
-        (r'/plugin/lottery', LotteryHandler)
+        (r'/plugin/lottery', LotteryHandler),
+        (r'/plugin/meduo/users', MeduoUserHandler)
     ], debug=True
 )
 

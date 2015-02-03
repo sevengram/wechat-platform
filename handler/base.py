@@ -14,10 +14,10 @@ class BaseHandler(tornado.web.RequestHandler):
         self.storage = storage.wechat_storage
         self.post_args = {}
 
-    def assign_arguments(self, essential, extra):
+    def assign_arguments(self, essential, extra=None):
         try:
             r1 = {key: self.get_argument(key) for key in essential}
-            r2 = {key: self.get_argument(key, defult) for key, defult in extra}
+            r2 = {key: self.get_argument(key, defult) for key, defult in extra or []}
         except tornado.web.MissingArgumentError:
             raise tornado.web.HTTPError(400)
         for key in essential:
