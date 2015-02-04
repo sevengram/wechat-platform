@@ -22,13 +22,35 @@ class MeduoStorage(Storage):
         self.replace('meduo_user_info', user,
                      noninsert=noninsert)
 
+    def get_user_info(self, appid='', openid='', uid='', select_key='*'):
+        return self.get('meduo_user_info',
+                        {'appid': appid, 'openid': openid, 'uid': uid},
+                        select_key=select_key)
 
+
+# TODO: local test db
 meduo_storage = MeduoStorage(host='127.0.0.1',
                              user='root',
                              passwd='eboue')
 
 
 class MeduoUserHandler(BaseHandler):
+    @tornado.gen.coroutine
+    def put(self, uid, *args, **kwargs):
+        post_args = self.assign_arguments(
+            essential=['']
+        )
+
+        appid = self.get_argument('appid')
+        openid = self.get_argument('openid')
+
+        # Check user
+        if not meduo_storage.get_user_info(openid=openid, appid=appid, uid=uid):
+            pass
+        else:
+            self.send_response(err_code=2002)
+
+
     @tornado.gen.coroutine
     def post(self, *args, **kwargs):
         req_data = {
@@ -45,6 +67,7 @@ class MeduoUserHandler(BaseHandler):
         except tornado.httpclient.HTTPError:
             self.send_response(err_code=9002)
             raise tornado.gen.Return()
+
         if resp.code != 200:
             self.send_response(err_code=9002)
             raise tornado.gen.Return()
@@ -53,6 +76,7 @@ class MeduoUserHandler(BaseHandler):
         if resp_data['err_code'] != 0:
             self.send_response(err_code=resp_data['err_code'])
             raise tornado.gen.Return()
+
         save_data = dtools.transfer(src=resp_data['data'], copys=[
             'appid',
             'openid',
@@ -62,9 +86,13 @@ class MeduoUserHandler(BaseHandler):
             'province',
             'country'
         ])
-        save_data['phone'] = self.get_argument('phone', '')
         save_data['channel'] = self.get_argument('channel', '')
         meduo_storage.add_user_info(save_data, noninsert=['code'])
+        post_resp_data = dtools.filter_data(
+            meduo_storage.get_user_info(appid=save_data['appid'], uid=save_data['openid']),
+            nonblank=True,
+            delkeys=['password'])
+        self.send_response(post_resp_data)
 
 
 class MeduoMsgHandler(BaseHandler):
@@ -81,7 +109,7 @@ class MeduoMsgHandler(BaseHandler):
         }
         security.add_sign(req_data, meduo_key)
 
-        # get use info
+        # Get user info
         try:
             # TODO: change url
             resp = yield ahttp.get_dict(
@@ -89,6 +117,7 @@ class MeduoMsgHandler(BaseHandler):
                 data=req_data)
         except tornado.httpclient.HTTPError:
             raise tornado.gen.Return()
+
         if resp.code != 200:
             raise tornado.gen.Return()
 

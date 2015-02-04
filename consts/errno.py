@@ -10,6 +10,7 @@ err_map = defaultdict(lambda: ('FAIL', 'ERROR'), {
     1003: ('ACCESSERROR', u'获取access_token时AppSecret错误，或者access_token无效'),
     1004: ('TOKENERROR', u'不合法的access_token'),
     2001: ('INVALIDCODE', u'不合法的oauth_code'),
+    2002: ('USERNOTEXIST', u'用户不存在'),
     3001: ('NOTENOUGH', u'用户余额不足'),
     3101: ('ORDERPAID', u'商户订单已支付'),
     3102: ('ORDERCLOSED', u'订单已关闭'),

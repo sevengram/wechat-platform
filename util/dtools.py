@@ -6,9 +6,16 @@ from util import xmltodict
 
 
 def transfer(src, copys=None, renames=None):
-    r1 = {key: src.get(key, '') for key in copys or []}
-    r2 = {new_key: src.get(key, '') for key, new_key in renames or []}
-    return dict(r1, **r2)
+    if not src:
+        return {}
+    else:
+        r1 = {key: src.get(key, '') for key in (copys or [])}
+        r2 = {new_key: src.get(key, '') for key, new_key in (renames or [])}
+        return dict(r1, **r2)
+
+
+def filter_data(src, nonblank=False, delkeys=None):
+    return {k: v for k, v in src.iteritems() if (not nonblank or v) and k not in (delkeys or [])}
 
 
 def special_decode(text):

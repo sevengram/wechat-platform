@@ -13,11 +13,14 @@ from util import dtools
 
 
 class UserHandler(SiteBaseHandler):
-    def get_local_user_info(self, appid, openid):
-        user_info = self.storage.get_user_info(appid=appid, openid=openid)
-        return dtools.transfer(
+    @tornado.gen.coroutine
+    def get(self, siteid, openid, *args, **kwargs):
+        # Search user info from db
+        user_info = self.storage.get_user_info(appid=self.get_argument('appid'), openid=openid)
+        get_resp_data = dtools.transfer(
             user_info,
             copys=[
+                'uid',
                 'appid',
                 'openid',
                 'unionid',
@@ -29,41 +32,27 @@ class UserHandler(SiteBaseHandler):
                 'country',
                 'headimgurl',
                 'subscribe_time'
-            ]) if user_info else None
+            ])
+        self.send_response(get_resp_data)
 
     @tornado.gen.coroutine
-    def get(self, siteid, openid, *args, **kwargs):
+    def put(self, siteid, openid, *args, **kwargs):
         appid = self.get_argument('appid')
-
-        # Search user info from local db
-        local_user_info = self.get_local_user_info(appid, openid)
-        if local_user_info and local_user_info.get('nickname'):
-            local_user_info['appid'] = appid
-            self.send_response(local_user_info)
-            raise tornado.gen.Return()
-
-        # Get user info from wechat
+        # Update user info from wechat
         user_info_result = yield wxclient.get_user_info(appid, openid)
         err_code = user_info_result.get('err_code', 1)
         if err_code != 0:
             self.send_response(err_code=err_code)
         else:
-            post_resp_data = user_info_result['data']
-            post_resp_data['appid'] = appid
+            post_resp_data = dict(user_info_result['data'],
+                                  appid=appid,
+                                  uid=hashlib.md5(appid + '_' + openid).hexdigest(),
+                                  lang=user_info_result['data'].get('language', ''))
             self.send_response(data=post_resp_data)
-            # Save userinfo to db
-            saved_data = dict(post_resp_data,
-                              uid=hashlib.md5(
-                                  post_resp_data['appid'] + '_' + post_resp_data['openid']).hexdigest(),
-                              lang=post_resp_data.get('language', ''))
-            self.storage.add_user_info(saved_data, noninsert=['remark', 'language'])
+            self.storage.add_user_info(post_resp_data, noninsert=['remark', 'language'])
 
     @tornado.gen.coroutine
     def post(self, siteid, *args, **kwargs):
-        yield self.put(siteid)
-
-    @tornado.gen.coroutine
-    def put(self, siteid, *args, **kwargs):
         appid = self.get_argument('appid')
         appinfo = self.storage.get_app_info(appid=appid)
         if not appinfo:
@@ -83,20 +72,12 @@ class UserHandler(SiteBaseHandler):
             raise tornado.gen.Return()
 
         resp_data1 = self.parse_oauth_resp(resp1)
-        openid = resp_data1['openid']
         if resp_data1:
+            openid = resp_data1['openid']
             post_resp_data = {
                 'openid': openid,
                 'appid': appid
             }
-
-            # Search user info from local db
-            local_user_info = self.get_local_user_info(appid, openid)
-            if local_user_info and local_user_info.get('nickname'):
-                post_resp_data.update(local_user_info)
-                self.send_response(post_resp_data)
-                raise tornado.gen.Return()
-
             # Get user info from wechat
             if 'snsapi_userinfo' in [v.strip() for v in resp_data1['scope'].split(',')]:
                 req_data2 = {
@@ -112,10 +93,7 @@ class UserHandler(SiteBaseHandler):
                 resp_data2 = self.parse_oauth_resp(resp2)
                 if resp_data2:
                     post_resp_data.update(resp_data2)
-                    # Save userinfo to db
-                    saved_data = dict(post_resp_data,
-                                      uid=hashlib.md5(
-                                          post_resp_data['appid'] + '_' + post_resp_data['openid']).hexdigest(),
-                                      lang=post_resp_data.get('language', ''))
-                    self.storage.add_user_info(saved_data, noninsert=['privilege', 'language'])
+                    post_resp_data['uid'] = hashlib.md5(appid + '_' + openid).hexdigest()
+                    post_resp_data['lang'] = post_resp_data.get('language', '')
             self.send_response(post_resp_data)
+            self.storage.add_user_info(post_resp_data, noninsert=['privilege', 'language'])

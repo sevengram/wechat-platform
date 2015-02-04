@@ -121,11 +121,11 @@ class WechatStorage(Storage):
                         {'appid': appid, 'openid': openid, 'unionid': unionid},
                         select_key=select_key)
 
+#
+# wechat_storage = WechatStorage(host='newbuy01.mysql.rds.aliyuncs.com',
+#                                user='wechat_admin',
+#                                passwd='_WecAd456')
 
-wechat_storage = WechatStorage(host='newbuy01.mysql.rds.aliyuncs.com',
-                               user='wechat_admin',
-                               passwd='_WecAd456')
-
-# wechat_storage = WechatStorage(host='127.0.0.1',
-#                                user='root',
-#                                passwd='eboue')
+wechat_storage = WechatStorage(host='127.0.0.1',
+                               user='root',
+                               passwd='eboue')
