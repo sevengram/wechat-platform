@@ -5,9 +5,9 @@ import json
 import tornado.gen
 import tornado.httpclient
 
-import storage
 from consts import url
 from consts import errno
+from util import storage
 from util import async_http as ahttp
 
 

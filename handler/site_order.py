@@ -86,7 +86,6 @@ class OrderHandler(SiteBaseHandler):
             }
             self.send_response(post_resp_data)
 
-
     @tornado.gen.coroutine
     def get(self, siteid, out_trade_no, *args, **kwargs):
         appid = self.get_argument('appid')

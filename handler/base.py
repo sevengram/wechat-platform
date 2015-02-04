@@ -3,7 +3,7 @@
 import tornado.web
 import tornado.gen
 
-import storage
+from util import storage
 from util import security
 from consts import errno
 

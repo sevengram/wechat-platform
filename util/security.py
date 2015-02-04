@@ -50,3 +50,8 @@ def build_sign(data, key, method='md5'):
         return hashlib.sha1(''.join(p)).hexdigest()
     else:
         return ''
+
+
+def add_sign(data, key, method='md5'):
+    data['nonce_str'] = nonce_str()
+    data['sign'] = build_sign(data, key, method)
