@@ -4,21 +4,17 @@ from collections import defaultdict
 
 from fabric.api import run, env, execute, task, cd, settings
 
-
 env.roledefs = {
-    'root@qa': ['root@newbuy-qa-wechat01'],
-    'root@prod': ['root@newbuy-prod-wechat01'],
-    'wechat@qa': ['wechat@newbuy-qa-wechat01'],
-    'wechat@prod': ['wechat@newbuy-prod-wechat01']
+    'root@dev': ['root@sirius-a'],
+    'wechat@dev': ['wechat@sirius-a']
 }
 env.key_filename = '~/.ssh/id_rsa'
 
-level_map = defaultdict(lambda: ['prod'], {
+level_map = defaultdict(lambda: ['dev'], {
     'master': ['prod'],
     'dev': ['qa']
 })
 
-remote_path = 'git@newbuy-dev:common/wechat.git'
 code_dir = '/home/wechat/service'
 
 
@@ -35,7 +31,7 @@ def ship(branch, commit):
         print 'Start deploying.....'
 
         # 2. Deploy
-        sync_result = execute(sync_repo, remote_path, commit, code_dir, roles=user_roles)
+        sync_result = execute(sync_repo, commit, code_dir, roles=user_roles)
         if check_all_success(sync_result):
             # Restart service
             reload_result = execute(reload_service, roles=root_roles)
@@ -60,7 +56,7 @@ def ship(branch, commit):
             sync_result2 = {}
             for host, info in sync_result.iteritems():
                 if info['old_commit']:
-                    sync_result2.update(execute(sync_repo, remote_path, info['old_commit'], code_dir, host=host))
+                    sync_result2.update(execute(sync_repo, info['old_commit'], code_dir, host=host))
                 else:
                     print 'No commit to rollback on %s' % host
             if check_all_success(sync_result2):
@@ -83,7 +79,7 @@ def ship(branch, commit):
     exit(return_code)
 
 
-def sync_repo(remote, commit, directory):
+def sync_repo(commit, directory):
     with cd(directory):
         with settings(warn_only=True):
             r1 = run('git rev-parse HEAD')
@@ -92,9 +88,8 @@ def sync_repo(remote, commit, directory):
                 return {'error': 1, 'old_commit': ''}
             r2 = run('git reset --hard && '
                      'git clean -fdx && '
-                     'git remote set-url origin %s && '
-                     'git fetch origin && '
-                     'git checkout %s' % (remote, commit))
+                     'git fetch && '
+                     'git checkout %s' % commit)
             if r2.failed:
                 return {'error': 2, 'old_commit': r1.stdout}
             else:
@@ -103,7 +98,8 @@ def sync_repo(remote, commit, directory):
 
 def reload_service():
     with settings(warn_only=True):
-        result = run('supervisorctl restart wechat:')
+        # result = run('supervisorctl restart wechat:')
+        result = run('service supervisor restart')
         if result.failed:
             return {'error': 1}
         else:

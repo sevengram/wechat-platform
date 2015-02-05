@@ -126,6 +126,10 @@ class WechatStorage(Storage):
 #                                user='wechat_admin',
 #                                passwd='_WecAd456')
 
-wechat_storage = WechatStorage(host='127.0.0.1',
-                               user='root',
-                               passwd='eboue')
+# wechat_storage = WechatStorage(host='127.0.0.1',
+#                                user='root',
+#                                passwd='eboue')
+
+wechat_storage = WechatStorage(host='eridanus.mysql.rds.aliyuncs.com',
+                               user='wechat_admin',
+                               passwd='Waeboue123')

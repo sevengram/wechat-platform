@@ -9,6 +9,7 @@ from tornado.options import define, options
 
 from handler import site_order
 from handler import site_user
+from handler import site_news
 from handler.wx_msg import WechatMsgHandler
 from handler.wx_pay import WechatPayHandler
 from plugin.meduo import MeduoUserHandler
@@ -23,6 +24,7 @@ application = tornado.web.Application(
     handlers=[
         (r'/notify/messages', WechatMsgHandler, dict(sign_check=True)),
         (r'/notify/payment', WechatPayHandler, dict(sign_check=True)),
+        (r'/sites/(\w+)/news', site_news.NewsHandler, dict(sign_check=False)),
         (r'/sites/(\w+)/users', site_user.UserHandler, dict(sign_check=False)),
         (r'/sites/(\w+)/users/(\w+)', site_user.UserHandler, dict(sign_check=False)),
         (r'/sites/(\w+)/orders', site_order.OrderHandler, dict(sign_check=False)),
