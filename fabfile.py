@@ -98,8 +98,7 @@ def sync_repo(commit, directory):
 
 def reload_service():
     with settings(warn_only=True):
-        # result = run('supervisorctl restart wechat:')
-        result = run('service supervisor restart')
+        result = run('supervisorctl restart wechat:')
         if result.failed:
             return {'error': 1}
         else:
