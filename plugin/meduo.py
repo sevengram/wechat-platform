@@ -36,22 +36,6 @@ meduo_storage = MeduoStorage(host='eridanus.mysql.rds.aliyuncs.com',
 
 class MeduoUserHandler(BaseHandler):
     @tornado.gen.coroutine
-    def put(self, uid, *args, **kwargs):
-        post_args = self.assign_arguments(
-            essential=['']
-        )
-
-        appid = self.get_argument('appid')
-        openid = self.get_argument('openid')
-
-        # Check user
-        if not meduo_storage.get_user_info(openid=openid, appid=appid, uid=uid):
-            pass
-        else:
-            self.send_response(err_code=2002)
-
-
-    @tornado.gen.coroutine
     def post(self, *args, **kwargs):
         req_data = {
             'appid': self.get_argument('appid'),
