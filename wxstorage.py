@@ -2,8 +2,6 @@
 
 import time
 
-from tornado.options import options
-
 import settings
 
 from util import storage
@@ -50,5 +48,4 @@ class WechatStorage(storage.Storage):
                         {'appid': appid, 'openid': openid, 'unionid': unionid},
                         select_key=select_key)
 
-
-wechat_storage = WechatStorage(**settings.db_conf(options.env))
+wechat_storage = WechatStorage(**settings.db_conf)

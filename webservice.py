@@ -7,13 +7,16 @@ import tornado.ioloop
 import tornado.options
 from tornado.options import define, options
 
+define('port', default=33600, help="run on the given port", type=int)
+define('env', default='dev', help="run on the given environment", type=str)
+define('conf', default='config', help="config file dir", type=str)
+
+tornado.options.parse_command_line()
+
 from handler import site_order, site_user, site_news
 from handler.wx_msg import WechatMsgHandler
 from handler.wx_pay import WechatPayHandler
 
-
-define('port', default=33600, help="run on the given port", type=int)
-define('env', default='prod', help="run on the given environment", type=str)
 
 application = tornado.web.Application(
     handlers=[
@@ -28,7 +31,6 @@ application = tornado.web.Application(
 )
 
 if __name__ == '__main__':
-    tornado.options.parse_command_line()
     http_server = tornado.httpserver.HTTPServer(application, xheaders=True)
     http_server.listen(options.port)
     tornado.ioloop.IOLoop.instance().start()
