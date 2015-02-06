@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 
+import ConfigParser
 import time
 
-import settings
+from tornado.options import options
 
 from util import storage
 
@@ -48,4 +49,8 @@ class WechatStorage(storage.Storage):
                         {'appid': appid, 'openid': openid, 'unionid': unionid},
                         select_key=select_key)
 
-wechat_storage = WechatStorage(**settings.db_conf)
+
+__db_parser = ConfigParser.ConfigParser()
+__db_parser.read(options.conf + '/db.conf')
+
+wechat_storage = WechatStorage(**dict(__db_parser.items(options.env)))

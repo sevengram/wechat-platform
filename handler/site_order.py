@@ -6,7 +6,7 @@ import tornado.web
 import tornado.gen
 import tornado.httpclient
 
-import settings
+import url
 from util import dtools
 from util import security
 from util import http
@@ -62,7 +62,7 @@ class OrderHandler(SiteBaseHandler):
         req_data['sign'] = security.build_sign(req_data, req_key)
 
         try:
-            resp = yield http.post_dict(url=settings.mch_url['order_add'], data=req_data, data_type='xml')
+            resp = yield http.post_dict(url=url.mch_order_add, data=req_data, data_type='xml')
         except tornado.httpclient.HTTPError:
             self.send_response(err_code=1001)
             raise tornado.gen.Return()
@@ -105,7 +105,7 @@ class OrderHandler(SiteBaseHandler):
         req_data['sign'] = security.build_sign(req_data, req_key)
 
         try:
-            resp = yield http.post_dict(url=settings.mch_url['order_query'], data=req_data, data_type='xml')
+            resp = yield http.post_dict(url=url.mch_order_query, data=req_data, data_type='xml')
         except tornado.httpclient.HTTPError:
             self.send_response(err_code=1001)
             raise tornado.gen.Return()

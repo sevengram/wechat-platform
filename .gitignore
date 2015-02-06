@@ -15,4 +15,5 @@ __pycache__/
 # Gitlab Wiki Link
 wiki
 
-upload
+# Config files
+config/db.conf
