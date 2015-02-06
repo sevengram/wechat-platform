@@ -1,33 +1,20 @@
 # -*- coding: utf-8 -*-
 
 import ConfigParser
+import sys
 
 __url_parser = ConfigParser.ConfigParser()
-__url_parser.read('conf/url.conf')
+__url_parser.read('/home/wechat/service/config/url.conf')
 
 __db_parser = ConfigParser.ConfigParser()
-__db_parser.read('conf/database.conf')
+__db_parser.read('/home/wechat/service/config/database.conf')
+
+mch_url = dict(__url_parser.items('mch'))
+
+wechat_url = dict(__url_parser.items('wechat'))
 
 
-def mch_url(item):
-    return __url_parser.get('mch', item)
-
-
-def wechat_url(item):
-    return __url_parser.get('wechat', item)
-
-
-def db_name(environment):
-    return __db_parser.get(environment, 'db_name')
-
-
-def db_host(environment):
-    return __db_parser.get(environment, 'db_host')
-
-
-def db_user(environment):
-    return __db_parser.get(environment, 'db_user')
-
-
-def db_pwd(environment):
-    return __db_parser.get(environment, 'db_pwd')
+def db_conf(env):
+    print env
+    sys.stdout.flush()
+    return dict(__db_parser.items(env))

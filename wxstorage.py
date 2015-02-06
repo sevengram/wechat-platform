@@ -2,12 +2,16 @@
 
 import time
 
+from tornado.options import options
+
+import settings
+
 from util import storage
 
 
 class WechatStorage(storage.Storage):
-    def __init__(self, dbname, host, user, passwd):
-        super(WechatStorage, self).__init__(dbname, host, user, passwd)
+    def __init__(self, db_name, db_host, db_user, db_pwd):
+        super(WechatStorage, self).__init__(db_name, db_host, db_user, db_pwd)
 
     def add_user_info(self, user, noninsert=None):
         self.replace('wechat_user_info', user,
@@ -46,16 +50,5 @@ class WechatStorage(storage.Storage):
                         {'appid': appid, 'openid': openid, 'unionid': unionid},
                         select_key=select_key)
 
-#
-# wechat_storage = WechatStorage(host='newbuy01.mysql.rds.aliyuncs.com',
-#                                user='wechat_admin',
-#                                passwd='_WecAd456')
 
-# wechat_storage = WechatStorage(host='127.0.0.1',
-#                                user='root',
-#                                passwd='eboue')
-
-wechat_storage = WechatStorage(dbname='wechat_platform',
-                               host='eridanus.mysql.rds.aliyuncs.com',
-                               user='wechat_admin',
-                               passwd='Waeboue123')
+wechat_storage = WechatStorage(**settings.db_conf(options.env))

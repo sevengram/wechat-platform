@@ -34,7 +34,7 @@ def _get_access_token(appid, refresh=False):
             })
     try:
         resp = yield http.get_dict(
-            url=settings.wechat_url('basic_access_token'),
+            url=settings.wechat_url['basic_access_token'],
             data={
                 'grant_type': 'client_credential',
                 'appid': appid,
@@ -60,7 +60,7 @@ def get_user_info(appid, openid, retry=0):
     token = token_result['data']['access_token']
     try:
         resp = yield http.get_dict(
-            url=settings.wechat_url('basic_userinfo'),
+            url=settings.wechat_url['basic_userinfo'],
             data={
                 'access_token': token,
                 'openid': openid,

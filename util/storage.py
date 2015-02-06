@@ -15,16 +15,16 @@ def get_redis_key(table, data, keys):
 
 
 class Storage(object):
-    def __init__(self, dbname, host, user, passwd):
-        self.usr = user
-        self.pwd = passwd
-        self.dbname = dbname
-        self.host = host
+    def __init__(self, db_name, db_host, db_user, db_pwd):
+        self.db_usr = db_user
+        self.db_pwd = db_pwd
+        self.db_name = db_name
+        self.db_host = db_host
         self.connect()
 
     def connect(self):
         self.connection = MySQLdb.connect(
-            user=self.usr, passwd=self.pwd, host=self.host, db=self.dbname, charset='utf8')
+            user=self.db_usr, passwd=self.db_pwd, host=self.db_host, db=self.db_name, charset='utf8')
 
     def execute(self, query, args, cursorclass=MySQLdb.cursors.DictCursor):
         cursor = self.connection.cursor(cursorclass)

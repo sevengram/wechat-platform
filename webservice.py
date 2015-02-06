@@ -12,7 +12,8 @@ from handler.wx_msg import WechatMsgHandler
 from handler.wx_pay import WechatPayHandler
 
 
-define("port", default=33600, help="run on the given port", type=int)
+define('port', default=33600, help="run on the given port", type=int)
+define('env', default='prod', help="run on the given environment", type=str)
 
 application = tornado.web.Application(
     handlers=[
@@ -26,7 +27,7 @@ application = tornado.web.Application(
     ], debug=True
 )
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     tornado.options.parse_command_line()
     http_server = tornado.httpserver.HTTPServer(application, xheaders=True)
     http_server.listen(options.port)
