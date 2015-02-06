@@ -4,13 +4,18 @@ import json
 
 from tornado.web import HTTPError
 
-from consts import errno
-from handler.base import BaseHandler
+import errno
 from util import dtools
 from util import security
+from util.web import BaseHandler
+from wxstorage import wechat_storage
 
 
 class SiteBaseHandler(BaseHandler):
+    def initialize(self, sign_check=False):
+        super(SiteBaseHandler, self).initialize(sign_check=sign_check)
+        self.storage = wechat_storage
+
     def prepare(self):
         if self.sign_check:
             parts = self.request.path.split('/')
@@ -66,3 +71,11 @@ class SiteBaseHandler(BaseHandler):
             self.send_response(None, *errno.wechat_map[int(resp_data.get('errcode'))])
             return None
         return resp_data
+
+    def send_response(self, data=None, err_code=0, err_msg=''):
+        resp = {'err_code': err_code,
+                'err_alias': errno.err_map[err_code][0],
+                'err_msg': err_msg or errno.err_map[err_code][1],
+                'data': data or ''}
+        self.write(resp)
+        self.finish()

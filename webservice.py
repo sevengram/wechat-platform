@@ -10,9 +10,6 @@ from tornado.options import define, options
 from handler import site_order, site_user, site_news
 from handler.wx_msg import WechatMsgHandler
 from handler.wx_pay import WechatPayHandler
-# from plugin.lottery import LotteryHandler
-# from plugin.newbuy import NewbuyHandler
-from plugin.meduo import MeduoMsgHandler, MeduoUserHandler
 
 
 define("port", default=33600, help="run on the given port", type=int)
@@ -25,11 +22,7 @@ application = tornado.web.Application(
         (r'/sites/(\w+)/users', site_user.UserHandler, dict(sign_check=False)),
         (r'/sites/(\w+)/users/(\w+)', site_user.UserHandler, dict(sign_check=False)),
         (r'/sites/(\w+)/orders', site_order.OrderHandler, dict(sign_check=False)),
-        (r'/sites/(\w+)/orders/(\w+)', site_order.OrderHandler, dict(sign_check=False)),
-        # (r'/plugin/newbuy', NewbuyHandler),
-        # (r'/plugin/lottery', LotteryHandler),
-        (r'/plugin/meduo/messages', MeduoMsgHandler),
-        (r'/plugin/meduo/users', MeduoUserHandler)
+        (r'/sites/(\w+)/orders/(\w+)', site_order.OrderHandler, dict(sign_check=False))
     ], debug=True
 )
 

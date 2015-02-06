@@ -26,11 +26,6 @@ err_map = defaultdict(lambda: ('FAIL', 'ERROR'), {
     9101: ('JSON_ERROR', u'JSON数据格式错误')
 })
 
-simple_map = defaultdict(lambda: ('FAIL', 'ERROR'), {
-    0: ('SUCCESS', 'OK'),
-    1: ('FAIL', 'ERROR')
-})
-
 alias_map = {v1: k for k, (v1, v2) in err_map.iteritems()}
 
 wechat_map = defaultdict(lambda: (9001, '请求失败'), {

@@ -3,16 +3,12 @@
 import tornado.web
 import tornado.gen
 
-from util import storage
 from util import security
-from consts import errno
 
 
 class BaseHandler(tornado.web.RequestHandler):
     def initialize(self, sign_check=False):
         self.sign_check = sign_check
-        self.storage = storage.wechat_storage
-        self.post_args = {}
 
     def assign_arguments(self, essential, extra=None):
         try:
@@ -40,8 +36,7 @@ class BaseHandler(tornado.web.RequestHandler):
 
     def send_response(self, data=None, err_code=0, err_msg=''):
         resp = {'err_code': err_code,
-                'err_alias': errno.err_map[err_code][0],
-                'err_msg': err_msg or errno.err_map[err_code][1],
+                'err_msg': err_msg,
                 'data': data or ''}
         self.write(resp)
         self.finish()

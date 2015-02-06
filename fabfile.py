@@ -6,13 +6,15 @@ from fabric.api import run, env, execute, task, cd, settings
 
 env.roledefs = {
     'root@dev': ['root@sirius-a'],
-    'wechat@dev': ['wechat@sirius-a']
+    'wechat@dev': ['wechat@sirius-a'],
+    'root@qa': ['root@sirius-a'],
+    'wechat@qa': ['wechat@sirius-a']
 }
 env.key_filename = '~/.ssh/id_rsa'
 
 level_map = defaultdict(lambda: ['dev'], {
-    'master': ['prod'],
-    'dev': ['qa']
+    'dev': ['qa'],
+    'master': ['prod']
 })
 
 code_dir = '/home/wechat/service'

@@ -5,10 +5,10 @@ import json
 import tornado.gen
 import tornado.httpclient
 
+import errno
+from wxstorage import wechat_storage
 from consts import url
-from consts import errno
-from util import storage
-from util import async_http as ahttp
+from util import http
 
 
 def _parse_wechat_resp(resp):
@@ -25,19 +25,19 @@ def _parse_wechat_resp(resp):
 @tornado.gen.coroutine
 def _get_access_token(appid, refresh=False):
     if not refresh:
-        token = storage.wechat_storage.get_access_token(appid)
+        token = wechat_storage.get_access_token(appid)
         if token:
             raise tornado.gen.Return({
                 'err_code': 0,
                 'data': {'access_token': token}
             })
     try:
-        resp = yield ahttp.get_dict(
+        resp = yield http.get_dict(
             url=url.wechat_basic_access_token,
             data={
                 'grant_type': 'client_credential',
                 'appid': appid,
-                'secret': storage.wechat_storage.get_app_info(appid=appid, select_key='secret')
+                'secret': wechat_storage.get_app_info(appid=appid, select_key='secret')
             })
     except tornado.httpclient.HTTPError:
         raise tornado.gen.Return({'err_code': 1001})
@@ -47,7 +47,7 @@ def _get_access_token(appid, refresh=False):
         raise tornado.gen.Return(result)
     else:
         result_data = result.get('data', {})
-        storage.wechat_storage.add_access_token(appid, result_data.get('access_token'), result_data.get('expires_in'))
+        wechat_storage.add_access_token(appid, result_data.get('access_token'), result_data.get('expires_in'))
         raise tornado.gen.Return(result)
 
 
@@ -58,7 +58,7 @@ def get_user_info(appid, openid, retry=0):
         raise tornado.gen.Return(token_result)
     token = token_result['data']['access_token']
     try:
-        resp = yield ahttp.get_dict(
+        resp = yield http.get_dict(
             url=url.wechat_basic_userinfo,
             data={
                 'access_token': token,

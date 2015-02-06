@@ -5,14 +5,19 @@ import json
 import tornado.gen
 import tornado.httpclient
 
-from consts import errno
-from handler.base import BaseHandler
 from util import dtools
 from util import security
-from util import async_http as ahttp
+from util import http
+from util.web import BaseHandler
+from wxstorage import wechat_storage
 
 
 class WechatPayHandler(BaseHandler):
+    def initialize(self, sign_check=False):
+        super(WechatPayHandler, self).initialize(sign_check=sign_check)
+        self.storage = wechat_storage
+        self.post_args = {}
+
     @tornado.gen.coroutine
     def prepare(self):
         self.post_args = dtools.xml2dict(self.request.body)
@@ -46,7 +51,7 @@ class WechatPayHandler(BaseHandler):
         req_data['sign'] = security.build_sign(req_data, req_key)
 
         try:
-            resp = yield ahttp.post_dict(
+            resp = yield http.post_dict(
                 url=site_info['pay_notify_url'],
                 data=req_data)
         except tornado.httpclient.HTTPError:
@@ -56,7 +61,7 @@ class WechatPayHandler(BaseHandler):
         if resp.code == 200:
             try:
                 resp_data = json.loads(resp.body)
-                self.send_response(err_code=errno.alias_map.get(resp_data.get('return_code'), 9001))
+                self.send_response(err_code=0 if resp_data.get('return_code') == 'SUCCESS' else 1)
             except ValueError:
                 self.send_response(err_code=9101)
         else:
@@ -68,8 +73,8 @@ class WechatPayHandler(BaseHandler):
     def send_response(self, data=None, err_code=0, err_msg=''):
         if not data:
             data = {}
-        data['return_code'] = errno.simple_map[err_code][0]
-        data['return_msg'] = errno.err_map[err_code][1]
+        data['return_code'] = 'SUCCESS' if err_code == 0 else 'FAIL'
+        data['return_msg'] = err_msg
         self.write(dtools.dict2xml(data))
         self.finish()
 

@@ -6,10 +6,11 @@ import time
 import tornado.gen
 import tornado.httpclient
 
-from util import async_http as ahttp
-from handler.base import BaseHandler
+from util import http
 from util import security
 from util import dtools
+from util.web import BaseHandler
+from wxstorage import wechat_storage
 
 
 def transfer_response(src):
@@ -51,6 +52,11 @@ def transfer_response(src):
 
 
 class WechatMsgHandler(BaseHandler):
+    def initialize(self, sign_check=False):
+        super(WechatMsgHandler, self).initialize(sign_check=sign_check)
+        self.storage = wechat_storage
+        self.post_args = {}
+
     @tornado.gen.coroutine
     def prepare(self):
         if self.sign_check:
@@ -88,7 +94,7 @@ class WechatMsgHandler(BaseHandler):
         req_data['sign'] = security.build_sign(req_data, req_key)
 
         try:
-            resp = yield ahttp.post_dict(
+            resp = yield http.post_dict(
                 url=site_info['msg_notify_url'],
                 data=req_data)
         except tornado.httpclient.HTTPError:
