@@ -6,8 +6,8 @@ from util import storage
 
 
 class WechatStorage(storage.Storage):
-    def __init__(self, host, user, passwd):
-        super(WechatStorage, self).__init__('wechat_platform', host, user, passwd)
+    def __init__(self, dbname, host, user, passwd):
+        super(WechatStorage, self).__init__(dbname, host, user, passwd)
 
     def add_user_info(self, user, noninsert=None):
         self.replace('wechat_user_info', user,
@@ -55,6 +55,7 @@ class WechatStorage(storage.Storage):
 #                                user='root',
 #                                passwd='eboue')
 
-wechat_storage = WechatStorage(host='eridanus.mysql.rds.aliyuncs.com',
+wechat_storage = WechatStorage(dbname='wechat_platform',
+                               host='eridanus.mysql.rds.aliyuncs.com',
                                user='wechat_admin',
                                passwd='Waeboue123')
