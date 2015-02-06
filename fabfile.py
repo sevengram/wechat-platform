@@ -92,6 +92,7 @@ def sync_repo(commit, directory):
                      'git clean -fdx && '
                      'git fetch && '
                      'git checkout %s &&'
+                     'git submodule update &&'
                      'cp config/db.conf.example config/db.conf' % commit)
             if r2.failed:
                 return {'error': 2, 'old_commit': r1.stdout}
