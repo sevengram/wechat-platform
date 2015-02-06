@@ -29,9 +29,9 @@ class MeduoStorage(Storage):
 
 
 # TODO: local test db
-meduo_storage = MeduoStorage(host='127.0.0.1',
-                             user='root',
-                             passwd='eboue')
+meduo_storage = MeduoStorage(host='eridanus.mysql.rds.aliyuncs.com',
+                             user='meduo_admin',
+                             passwd='Meaeboue123')
 
 
 class MeduoUserHandler(BaseHandler):
