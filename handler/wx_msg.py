@@ -13,32 +13,29 @@ from util.web import BaseHandler
 from wxstorage import wechat_storage
 
 
-def transfer_response(src):
-    if not src:
+def build_response(from_id, to_id, data):
+    if not data:
         return None
-    result = dtools.transfer(
-        src,
-        renames=[
-            ('to_openid', 'ToUserName'),
-            ('from_openid', 'FromUserName'),
-            ('msg_type', 'MsgType'),
-        ]
-    )
-    msg_type = src['msg_type']
+    msg_type = data['msg_type']
+    result = {
+        'FromUserName': from_id,
+        'ToUserName': to_id,
+        'MsgType': msg_type
+    }
     if msg_type == 'text':
         result.update({
-            'Content': src['content'],
+            'Content': data['content'],
             'CreateTime': int(time.time())
         })
     elif msg_type == 'news':
         result.update({
-            'ArticleCount': len(src['articles']),
+            'ArticleCount': len(data['articles']),
             'Articles': {
                 'item': []
             },
             'CreateTime': int(time.time())
         })
-        for article in src['articles']:
+        for article in data['articles']:
             item = dtools.transfer(
                 article,
                 renames=[
@@ -73,19 +70,19 @@ class WechatMsgHandler(BaseHandler):
         req_data = dtools.transfer(
             self.post_args,
             renames=[
-                ('FromUserName', 'from_openid'),
-                ('ToUserName', 'to_openid'),
+                ('FromUserName', 'openid'),
                 ('MsgType', 'msg_type'),
-                ('Content', 'content'),
                 ('MsgId', 'msg_id'),
                 ('CreateTime', 'msg_time'),
-                ('Event', 'event_type')]
+                ('Content', 'content'),
+                ('Event', 'event_type')],
+            nonblank=True
         )
         appinfo = self.storage.get_app_info(openid=self.post_args['ToUserName'])
         req_data['appid'] = appinfo['appid']
+        req_data['uid'] = security.get_uid(req_data['appid'], req_data['openid'])
         site_info = self.storage.get_site_info(appinfo['siteid'])
-        req_key = site_info['sitekey']
-        security.add_sign(req_data, req_key)
+        security.add_sign(req_data, site_info['sitekey'])
 
         try:
             resp = yield http.post_dict(
@@ -102,7 +99,9 @@ class WechatMsgHandler(BaseHandler):
         try:
             resp_data = json.loads(resp.body)
             if resp_data.get('err_code', 1) == 0:
-                self.send_response(transfer_response(resp_data.get('data')))
+                self.send_response(build_response(from_id=self.post_args['ToUserName'],
+                                                  to_id=self.post_args['FromUserName'],
+                                                  data=resp_data.get('data')))
             else:
                 self.send_response(err_code=9003)
         except ValueError:

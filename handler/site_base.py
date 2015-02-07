@@ -4,7 +4,7 @@ import json
 
 from tornado.web import HTTPError
 
-import errcode
+import errinfo
 from util import dtools
 from util import security
 from util.web import BaseHandler
@@ -57,7 +57,7 @@ class SiteBaseHandler(BaseHandler):
             self.send_response(err_code=1002)
             return None
         if resp_data['result_code'].lower() != 'success':
-            self.send_response(err_code=errcode.alias_map.get(resp_data.get('err_code'), 9001),
+            self.send_response(err_code=errinfo.alias_map.get(resp_data.get('err_code'), 9001),
                                err_msg=resp_data.get('err_code_des'))
             return None
         return resp_data
@@ -68,14 +68,14 @@ class SiteBaseHandler(BaseHandler):
             return None
         resp_data = json.loads(resp.body)
         if resp_data.get('errcode'):
-            self.send_response(None, *errcode.wechat_map[int(resp_data.get('errcode'))])
+            self.send_response(None, *errinfo.wechat_map[int(resp_data.get('errcode'))])
             return None
         return resp_data
 
     def send_response(self, data=None, err_code=0, err_msg=''):
         resp = {'err_code': err_code,
-                'err_alias': errcode.err_map[err_code][0],
-                'err_msg': err_msg or errcode.err_map[err_code][1],
+                'err_alias': errinfo.err_map[err_code][0],
+                'err_msg': err_msg or errinfo.err_map[err_code][1],
                 'data': data or ''}
         self.write(resp)
         self.finish()

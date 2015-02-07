@@ -13,8 +13,7 @@ class WechatStorage(storage.Storage):
         super(WechatStorage, self).__init__(db_name, db_host, db_user, db_pwd)
 
     def add_user_info(self, user, noninsert=None):
-        self.replace('wechat_user_info', user,
-                     noninsert=noninsert)
+        self.replace('wechat_user_info', user, noninsert=noninsert)
 
     def add_access_token(self, appid, access_token, expires_in):
         self.replace('wechat_app_token', {

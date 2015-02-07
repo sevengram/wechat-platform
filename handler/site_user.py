@@ -1,15 +1,12 @@
 # -*- coding: utf-8 -*-
 
-import hashlib
-
 import tornado.gen
 import tornado.httpclient
 
 import url
 import wxclient
 from handler.site_base import SiteBaseHandler
-from util import http
-from util import dtools
+from util import http, dtools, security
 
 
 class UserHandler(SiteBaseHandler):
@@ -46,7 +43,7 @@ class UserHandler(SiteBaseHandler):
         else:
             post_resp_data = dict(user_info_result['data'],
                                   appid=appid,
-                                  uid=hashlib.md5(appid + '_' + openid).hexdigest(),
+                                  uid=security.get_uid(appid, openid),
                                   lang=user_info_result['data'].get('language', ''))
             self.send_response(data=post_resp_data)
             self.storage.add_user_info(post_resp_data, noninsert=['remark', 'language'])
@@ -77,7 +74,7 @@ class UserHandler(SiteBaseHandler):
             post_resp_data = {
                 'openid': openid,
                 'appid': appid,
-                'uid': hashlib.md5(appid + '_' + openid).hexdigest()
+                'uid': security.get_uid(appid, openid)
             }
             # Get user info from wechat
             if 'snsapi_userinfo' in [v.strip() for v in resp_data1['scope'].split(',')]:
