@@ -12,9 +12,10 @@ from util import http, dtools, security
 
 class UserHandler(SiteBaseHandler):
     @tornado.gen.coroutine
-    def get(self, siteid, openid, *args, **kwargs):
+    def get(self, siteid, uid, *args, **kwargs):
         # Search user info from db
-        user_info = self.storage.get_user_info(appid=self.get_argument('appid'), openid=openid)
+        user_info = self.storage.get_user_info(appid=self.get_argument('appid'),
+                                               openid=self.get_argument('openid'))
         get_resp_data = dtools.transfer(
             user_info,
             copys=[
@@ -34,8 +35,9 @@ class UserHandler(SiteBaseHandler):
         self.send_response(get_resp_data)
 
     @tornado.gen.coroutine
-    def put(self, siteid, openid, *args, **kwargs):
+    def put(self, siteid, uid, *args, **kwargs):
         appid = self.get_argument('appid')
+        openid = self.get_argument('openid')
         # Update user info from wechat
         user_info_result = yield wxclient.get_user_info(appid, openid)
         print user_info_result
