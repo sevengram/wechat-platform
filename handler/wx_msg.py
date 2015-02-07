@@ -82,16 +82,10 @@ class WechatMsgHandler(BaseHandler):
                 ('Event', 'event_type')]
         )
         appinfo = self.storage.get_app_info(openid=self.post_args['ToUserName'])
-        appid = appinfo['appid']
-        req_data.update(
-            {
-                'appid': appid,
-                'nonce_str': security.nonce_str()
-            }
-        )
+        req_data['appid'] = appinfo['appid']
         site_info = self.storage.get_site_info(appinfo['siteid'])
         req_key = site_info['sitekey']
-        req_data['sign'] = security.build_sign(req_data, req_key)
+        security.add_sign(req_data, req_key)
 
         try:
             resp = yield http.post_dict(

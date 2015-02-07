@@ -54,12 +54,11 @@ class OrderHandler(SiteBaseHandler):
             {
                 'attach': 'siteid=' + siteid,
                 'mch_id': appinfo.get('mch_id'),
-                'nonce_str': security.nonce_str(),
-                'notify_url': self.storage.get_site_info(siteid, select_key='pay_notify_url'),
+                'notify_url': self.storage.get_site_info(siteid, select_key='pay_notify_url')
             }
         )
         req_key = appinfo['apikey']
-        req_data['sign'] = security.build_sign(req_data, req_key)
+        security.add_sign(req_data, req_key)
 
         try:
             resp = yield http.post_dict(url=url.mch_order_add, data=req_data, data_type='xml')
@@ -98,11 +97,10 @@ class OrderHandler(SiteBaseHandler):
             'appid': appid,
             'mch_id': appinfo.get('mch_id'),
             'transaction_id': '',
-            'out_trade_no': out_trade_no,
-            'nonce_str': security.nonce_str(),
+            'out_trade_no': out_trade_no
         }
         req_key = appinfo['apikey']
-        req_data['sign'] = security.build_sign(req_data, req_key)
+        security.add_sign(req_data, req_key)
 
         try:
             resp = yield http.post_dict(url=url.mch_order_query, data=req_data, data_type='xml')

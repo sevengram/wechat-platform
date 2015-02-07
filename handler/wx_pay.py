@@ -37,18 +37,13 @@ class WechatPayHandler(BaseHandler):
                    'transaction_id',
                    'time_end']
         )
-        req_data.update(
-            {
-                'unionid': self.storage.get_user_info(appid=req_data['appid'],
-                                                      openid=req_data['openid'],
-                                                      select_key='unionid'),
-                'nonce_str': security.nonce_str()
-            }
-        )
+        req_data['unionid'] = self.storage.get_user_info(appid=req_data['appid'],
+                                                         openid=req_data['openid'],
+                                                         select_key='unionid')
         attach = dict([t.split('=') for t in self.post_args['attach'].split(',')])
         site_info = self.storage.get_site_info(siteid=attach['siteid'])
         req_key = site_info['sitekey']
-        req_data['sign'] = security.build_sign(req_data, req_key)
+        security.add_sign(req_data, req_key)
 
         try:
             resp = yield http.post_dict(
