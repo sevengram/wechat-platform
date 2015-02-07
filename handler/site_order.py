@@ -7,9 +7,7 @@ import tornado.gen
 import tornado.httpclient
 
 import url
-from util import dtools
-from util import security
-from util import http
+from util import dtools, security, http
 from handler.site_base import SiteBaseHandler
 
 

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
-import ConfigParser
 import time
+import ConfigParser
 
 from tornado.options import options
 

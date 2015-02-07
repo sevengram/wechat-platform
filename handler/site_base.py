@@ -5,8 +5,7 @@ import json
 from tornado.web import HTTPError
 
 import errinfo
-from util import dtools
-from util import security
+from util import dtools, security
 from util.web import BaseHandler
 from wxstorage import wechat_storage
 

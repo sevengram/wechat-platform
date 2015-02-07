@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-import sys
 
 import tornado.gen
 import tornado.httpclient
@@ -38,11 +37,9 @@ class UserHandler(SiteBaseHandler):
     def put(self, siteid, uid, *args, **kwargs):
         appid = self.get_argument('appid')
         openid = self.get_argument('openid')
+
         # Update user info from wechat
         user_info_result = yield wxclient.get_user_info(appid, openid)
-        print user_info_result
-        sys.stdout.flush()
-
         err_code = user_info_result.get('err_code', 1)
         if err_code != 0:
             self.send_response(err_code=err_code)

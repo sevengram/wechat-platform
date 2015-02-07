@@ -5,10 +5,10 @@ import json
 import tornado.gen
 import tornado.httpclient
 
-import errinfo
 import url
-from wxstorage import wechat_storage
+import errinfo
 from util import http
+from wxstorage import wechat_storage
 
 
 def _parse_wechat_resp(resp):
