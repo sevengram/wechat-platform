@@ -76,7 +76,8 @@ class UserHandler(SiteBaseHandler):
             openid = resp_data1['openid']
             post_resp_data = {
                 'openid': openid,
-                'appid': appid
+                'appid': appid,
+                'uid': hashlib.md5(appid + '_' + openid).hexdigest()
             }
             # Get user info from wechat
             if 'snsapi_userinfo' in [v.strip() for v in resp_data1['scope'].split(',')]:
@@ -93,7 +94,6 @@ class UserHandler(SiteBaseHandler):
                 resp_data2 = self.parse_oauth_resp(resp2)
                 if resp_data2:
                     post_resp_data.update(resp_data2)
-                    post_resp_data['uid'] = hashlib.md5(appid + '_' + openid).hexdigest()
                     post_resp_data['lang'] = post_resp_data.get('language', '')
             self.send_response(post_resp_data)
             self.storage.add_user_info(post_resp_data, noninsert=['privilege', 'language'])
