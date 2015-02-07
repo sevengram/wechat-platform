@@ -2,6 +2,7 @@
 
 import json
 import time
+import sys
 
 import tornado.gen
 import tornado.httpclient
@@ -83,6 +84,8 @@ class WechatMsgHandler(BaseHandler):
         req_data['uid'] = security.get_uid(req_data['appid'], req_data['openid'])
         site_info = self.storage.get_site_info(appinfo['siteid'])
         security.add_sign(req_data, site_info['sitekey'])
+        print req_data
+        sys.stdout.flush()
 
         try:
             resp = yield http.post_dict(
@@ -98,6 +101,8 @@ class WechatMsgHandler(BaseHandler):
 
         try:
             resp_data = json.loads(resp.body)
+            print resp_data
+            sys.stdout.flush()
             if resp_data.get('err_code', 1) == 0:
                 self.send_response(build_response(from_id=self.post_args['ToUserName'],
                                                   to_id=self.post_args['FromUserName'],
