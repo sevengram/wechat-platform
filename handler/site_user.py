@@ -35,13 +35,12 @@ class UserHandler(SiteBaseHandler):
 
     @tornado.gen.coroutine
     def put(self, siteid, openid, *args, **kwargs):
-        print 'put!!'
-        print self.request.arguments
-        sys.stdout.flush()
-
         appid = self.get_argument('appid')
         # Update user info from wechat
         user_info_result = yield wxclient.get_user_info(appid, openid)
+        print user_info_result
+        sys.stdout.flush()
+
         err_code = user_info_result.get('err_code', 1)
         if err_code != 0:
             self.send_response(err_code=err_code)
