@@ -5,7 +5,7 @@ import json
 import tornado.gen
 import tornado.httpclient
 
-import errno
+import errcode
 import url
 from wxstorage import wechat_storage
 from util import http
@@ -17,7 +17,7 @@ def _parse_wechat_resp(resp):
     resp_data = json.loads(resp.body)
     errcode = resp_data.get('errcode')
     if errcode:
-        wechat_err = errno.wechat_map[int(errcode)]
+        wechat_err = errcode.wechat_map[int(errcode)]
         return {'err_code': wechat_err[0], 'err_msg': wechat_err[1], 'data': {}}
     return {'err_code': 0, 'data': resp_data}
 
