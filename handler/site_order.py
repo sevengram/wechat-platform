@@ -13,7 +13,7 @@ from handler.site_base import SiteBaseHandler
 
 class OrderHandler(SiteBaseHandler):
     @tornado.gen.coroutine
-    def post(self, siteid, *args, **kwargs):
+    def post(self, siteid):
         parse_args = self.assign_arguments(
             essential=['appid',
                        'title',
@@ -84,7 +84,7 @@ class OrderHandler(SiteBaseHandler):
             self.send_response(post_resp_data)
 
     @tornado.gen.coroutine
-    def get(self, siteid, out_trade_no, *args, **kwargs):
+    def get(self, siteid, out_trade_no):
         appid = self.get_argument('appid')
         appinfo = self.storage.get_app_info(appid=appid)
         if not appinfo:

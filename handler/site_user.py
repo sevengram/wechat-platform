@@ -11,7 +11,7 @@ from util import http, dtools, security
 
 class UserHandler(SiteBaseHandler):
     @tornado.gen.coroutine
-    def get(self, siteid, uid, *args, **kwargs):
+    def get(self, siteid, uid):
         # Search user info from db
         user_info = self.storage.get_user_info(appid=self.get_argument('appid'),
                                                openid=self.get_argument('openid'))
@@ -34,7 +34,7 @@ class UserHandler(SiteBaseHandler):
         self.send_response(get_resp_data)
 
     @tornado.gen.coroutine
-    def put(self, siteid, uid, *args, **kwargs):
+    def put(self, siteid, uid):
         appid = self.get_argument('appid')
         openid = self.get_argument('openid')
 
@@ -52,7 +52,7 @@ class UserHandler(SiteBaseHandler):
             self.storage.add_user_info(post_resp_data, noninsert=['remark', 'language'])
 
     @tornado.gen.coroutine
-    def post(self, siteid, *args, **kwargs):
+    def post(self, siteid):
         appid = self.get_argument('appid')
         appinfo = self.storage.get_app_info(appid=appid)
         if not appinfo:
