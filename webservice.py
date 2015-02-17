@@ -1,17 +1,24 @@
 #! /usr/bin/env python2
 # -*- coding:utf8 -*-
 
+import logging
+
 import tornado.web
 import tornado.httpserver
 import tornado.ioloop
 import tornado.options
 from tornado.options import define, options
 
+
 define('port', default=33600, help="run on the given port", type=int)
 define('env', default='dev', help="run on the given environment", type=str)
 define('conf', default='config', help="config file dir", type=str)
 
 tornado.options.parse_command_line()
+
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s %(message)s',
+                    datefmt='%Y-%m-%d %H:%M:%S')
 
 from handler import site_order, site_user, site_news
 from handler.wx_msg import WechatMsgHandler
