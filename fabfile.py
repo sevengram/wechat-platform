@@ -5,10 +5,12 @@ from collections import defaultdict
 from fabric.api import run, env, execute, task, cd, settings
 
 env.roledefs = {
-    'root@dev': ['root@sirius-a'],
-    'wechat@dev': ['wechat@sirius-a'],
-    'root@qa': ['root@sirius-a'],
-    'wechat@qa': ['wechat@sirius-a']
+    'root@dev': [],
+    'wechat@dev': [],
+    'root@qa': ['root@wechat-server'],
+    'wechat@qa': ['wechat@wechat-server'],
+    'root@prod': ['root@wechat-server'],
+    'wechat@prod': ['wechat@wechat-server']
 }
 env.key_filename = '~/.ssh/id_rsa'
 
