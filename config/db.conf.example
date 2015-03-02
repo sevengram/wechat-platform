@@ -1,20 +1,20 @@
 [dev]
 
-db_name = wechat_platform
+db_name = wechat_service
 db_host = 127.0.0.1
 db_user = root
 db_pwd = root
 
 [qa]
 
-db_name = wechat_platform
+db_name = wechat_service
 db_host = rdsfmau7rfmau7r.mysql.rds.aliyuncs.com
 db_user = wechat_admin
 db_pwd = _WecAd456
 
 [prod]
 
-db_name = wechat_platform
+db_name = wechat_service
 db_host = rdsfmau7rfmau7r.mysql.rds.aliyuncs.com
 db_user = wechat_admin
 db_pwd = _WecAd456
