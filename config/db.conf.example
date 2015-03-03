@@ -7,10 +7,10 @@ db_pwd = root
 
 [qa]
 
-db_name = wechat_service
-db_host = rdsfmau7rfmau7r.mysql.rds.aliyuncs.com
+db_name = wechat_platform
+db_host = eridanus.mysql.rds.aliyuncs.com
 db_user = wechat_admin
-db_pwd = _WecAd456
+db_pwd = Waeboue123
 
 [prod]
 

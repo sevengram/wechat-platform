@@ -7,8 +7,8 @@ from fabric.api import run, env, execute, task, cd, settings
 env.roledefs = {
     'root@dev': [],
     'wechat@dev': [],
-    'root@qa': ['root@wechat-server'],
-    'wechat@qa': ['wechat@wechat-server'],
+    'root@qa': ['root@sirius-a'],
+    'wechat@qa': ['wechat@sirius-a'],
     'root@prod': ['root@wechat-server'],
     'wechat@prod': ['wechat@wechat-server']
 }
