@@ -20,7 +20,7 @@ logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s %(message)s',
                     datefmt='%Y-%m-%d %H:%M:%S')
 
-from handler import site_order, site_user, site_news
+from handler import site_order, site_user, site_news, site_test
 from handler.wx_msg import WechatMsgHandler
 from handler.wx_pay import WechatPayHandler
 
@@ -33,7 +33,9 @@ application = tornado.web.Application(
         (r'/sites/(\w+)/users', site_user.UserHandler, dict(sign_check=False)),
         (r'/sites/(\w+)/users/(\w+)', site_user.UserHandler, dict(sign_check=False)),
         (r'/sites/(\w+)/orders', site_order.OrderHandler, dict(sign_check=False)),
-        (r'/sites/(\w+)/orders/(\w+)', site_order.OrderHandler, dict(sign_check=False))
+        (r'/sites/(\w+)/orders/(\w+)', site_order.OrderHandler, dict(sign_check=False)),
+        # TODO: Test url
+        (r'/sites/(\w+)/test', site_test.TestHandler, dict(sign_check=False))
     ], debug=True
 )
 

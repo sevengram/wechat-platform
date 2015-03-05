@@ -5,8 +5,6 @@ from collections import defaultdict
 from fabric.api import run, env, execute, task, cd, settings
 
 env.roledefs = {
-    'root@dev': [],
-    'wechat@dev': [],
     'root@qa': ['root@sirius-a'],
     'wechat@qa': ['wechat@sirius-a'],
     'root@prod': ['root@wechat-server'],
@@ -14,7 +12,7 @@ env.roledefs = {
 }
 env.key_filename = '~/.ssh/id_rsa'
 
-level_map = defaultdict(lambda: ['dev'], {
+level_map = defaultdict(lambda: [], {
     'dev': ['qa'],
     'master': ['prod']
 })

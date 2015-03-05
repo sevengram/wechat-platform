@@ -3,6 +3,8 @@
 import Cookie
 import json
 import time
+import sys
+import urlparse
 
 import tornado.gen
 import tornado.httpclient
@@ -169,9 +171,9 @@ class MockBrowser(object):
 
     @tornado.gen.coroutine
     def login(self, appid):
-        # TODO: search from db
-        username = 'sevengram@163.com'
-        pwd = 'cbe34b794cc95deb3e5b5d390efb74d7'
+        appinfo = wechat_storage.get_app_info(appid)
+        username = appinfo['mp_username']
+        pwd = appinfo['mp_pwd']
         try:
             resp = yield self.post_form(appid, url.mp_login, {
                 'username': username,
@@ -180,14 +182,19 @@ class MockBrowser(object):
         except tornado.httpclient.HTTPError:
             raise tornado.gen.Return({'err_code': 1001})
         print resp.body
-        raise tornado.gen.Return('ok')
-
-        # if result and result['base_resp']['ret'] == 0:
-        #     self.tokens[appid]['last_login'] = time.time()
-        #     self.tokens[appid]['token'] = dict(urlparse.parse_qsl(result['redirect_url']))['token']
-        #     raise tornado.gen.Return(self.tokens[appid]['token'])
-        # else:
-        #     raise tornado.gen.Return(None)
+        sys.stdout.flush()
+        resp_data = json.loads(resp.body)
+        if resp_data and resp_data['base_resp']['ret'] == 0:
+            self.tokens[appid] = {
+                'last_login': time.time(),
+                'token': dict(urlparse.parse_qsl(resp_data['redirect_url']))['token']
+            }
+            raise tornado.gen.Return({
+                'err_code': 0,
+                'data': {'token': self.tokens[appid]['token']}
+            })
+        else:
+            raise tornado.gen.Return({'err_code': 9003})
 
 
 # def check_same(timestamp, content, mtype, user):
