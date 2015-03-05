@@ -2,8 +2,9 @@
 
 import Cookie
 import json
+import random
 import time
-import sys
+import urllib
 import urlparse
 
 import tornado.gen
@@ -17,13 +18,28 @@ from wxstorage import wechat_storage
 
 def _parse_wechat_resp(resp):
     if resp.code != 200:
-        return {'err_code': 1001, 'data': {}}
+        return {'err_code': 1001}
     resp_data = json.loads(resp.body)
     err_code = resp_data.get('errcode')
     if err_code:
         wechat_err = errinfo.wechat_map[int(err_code)]
-        return {'err_code': wechat_err[0], 'err_msg': wechat_err[1], 'data': {}}
+        return {'err_code': wechat_err[0], 'err_msg': wechat_err[1]}
     return {'err_code': 0, 'data': resp_data}
+
+
+def _parse_mp_resp(resp):
+    if resp.code != 200:
+        return {'err_code': 1001}
+    resp_data = json.loads(resp.body)
+    try:
+        if resp_data and resp_data['base_resp']['ret'] == -3:
+            return {'err_code': 1101}
+        elif resp_data and resp_data['base_resp']['ret'] == 0:
+            return {'err_code': 0, 'data': resp_data}
+        else:
+            return {'err_code': 1102}
+    except (KeyError, AttributeError, TypeError):
+        return {'err_code': 9003}
 
 
 @tornado.gen.coroutine
@@ -50,7 +66,7 @@ def _get_access_token(appid, refresh=False):
     if result.get('err_code', 1) != 0:
         raise tornado.gen.Return(result)
     else:
-        result_data = result.get('data', {})
+        result_data = result.get('data')
         wechat_storage.add_access_token(appid, result_data.get('access_token'), result_data.get('expires_in'))
         raise tornado.gen.Return(result)
 
@@ -104,7 +120,7 @@ class MockBrowser(object):
         self.tokens = {}
         self.cookies = {}
 
-    def init_cookies(self, appid):
+    def _init_cookies(self, appid):
         appinfo = wechat_storage.get_app_info(appid)
         self.cookies[appid] = {
             'data_bizuin': appinfo['data_bizuin'],
@@ -112,14 +128,14 @@ class MockBrowser(object):
             'bizuin': appinfo['bizuin']
         }
 
-    def build_cookies(self, appid):
+    def _build_cookies(self, appid):
         if appid not in self.cookies:
-            self.init_cookies(appid)
+            self._init_cookies(appid)
         return ';'.join(['%s=%s' % (key, value) for key, value in self.cookies[appid].iteritems()])
 
-    def set_cookies(self, appid, headers):
+    def _set_cookies(self, appid, headers):
         if appid not in self.cookies:
-            self.init_cookies(appid)
+            self._init_cookies(appid)
         for sc in headers.get_list("Set-Cookie"):
             c = Cookie.SimpleCookie(sc)
             for morsel in c.values():
@@ -134,39 +150,39 @@ class MockBrowser(object):
             appid].get('data_ticket') and time.time() - self.tokens[appid].get('last_login', 0) < 60 * 20
 
     @tornado.gen.coroutine
-    def post_form(self, appid, post_url, data, **kwargs):
+    def _post_form(self, appid, post_url, data, **kwargs):
         headers = dict(_default_headers, **{
             'Referer': kwargs.get('referer', url.mp_base),
-            'Cookie': self.build_cookies(appid),
+            'Cookie': self._build_cookies(appid),
             'Accept': kwargs.get('accept', 'application/json, text/javascript, */*; q=0.01'),
         })
         resp = yield http.post_dict(url=post_url, data=data, headers=headers)
         if resp.code == 200:
-            self.set_cookies(appid, resp.headers)
+            self._set_cookies(appid, resp.headers)
         raise tornado.gen.Return(resp)
 
     @tornado.gen.coroutine
-    def post_data(self, appid, post_url, data, content_type, **kwargs):
+    def _post_data(self, appid, post_url, data, content_type, **kwargs):
         headers = dict(_default_headers, **{
             'Referer': kwargs.get('referer', url.mp_base),
-            'Cookie': self.build_cookies(appid),
+            'Cookie': self._build_cookies(appid),
             'Content-Type': content_type,
         })
         resp = yield http.post_dict(url=post_url, data=data, data_type='raw', headers=headers)
         if resp.code == 200:
-            self.set_cookies(appid, resp.headers)
+            self._set_cookies(appid, resp.headers)
         raise tornado.gen.Return(resp)
 
     @tornado.gen.coroutine
-    def get(self, appid, get_url, data, **kwargs):
+    def _get(self, appid, get_url, data, **kwargs):
         headers = dict(_default_headers, **{
             'Referer': kwargs.get('referer', url.mp_base),
-            'Cookie': self.build_cookies(appid),
+            'Cookie': self._build_cookies(appid),
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
         })
         resp = yield http.get_dict(url=get_url, data=data, headers=headers)
         if resp.code == 200:
-            self.set_cookies(appid, resp.headers)
+            self._set_cookies(appid, resp.headers)
         raise tornado.gen.Return(resp)
 
     @tornado.gen.coroutine
@@ -175,27 +191,53 @@ class MockBrowser(object):
         username = appinfo['mp_username']
         pwd = appinfo['mp_pwd']
         try:
-            resp = yield self.post_form(appid, url.mp_login, {
+            resp = yield self._post_form(appid, url.mp_login, {
                 'username': username,
                 'pwd': pwd,
                 'f': 'json'})
         except tornado.httpclient.HTTPError:
             raise tornado.gen.Return({'err_code': 1001})
-        print resp.body
-        sys.stdout.flush()
-        resp_data = json.loads(resp.body)
-        if resp_data and resp_data['base_resp']['ret'] == 0:
+        result = _parse_mp_resp(resp)
+        if result.get('err_code', 1) != 0:
+            raise tornado.gen.Return(result)
+        else:
+            result_data = result.get('data')
             self.tokens[appid] = {
                 'last_login': time.time(),
-                'token': dict(urlparse.parse_qsl(resp_data['redirect_url']))['token']
+                'token': dict(urlparse.parse_qsl(result_data['redirect_url']))['token']
             }
             raise tornado.gen.Return({
                 'err_code': 0,
                 'data': {'token': self.tokens[appid]['token']}
             })
-        else:
-            raise tornado.gen.Return({'err_code': 9003})
 
+    @tornado.gen.coroutine
+    def send_single_message(self, appid, fakeid, content):
+        post_url = url.mp_singlesend + '?' + urllib.urlencode({
+            't': 'ajax-response',
+            'f': 'json',
+            'token': self.tokens[appid]['token'],
+            'lang': 'zh_CN'})
+        referer_url = url.mp_singlesend_page + '?' + urllib.urlencode({
+            'tofakeid': fakeid,
+            't': 'message/send',
+            'action': 'index',
+            'token': self.tokens[appid]['token'],
+            'lang': 'zh_CN'})
+        try:
+            resp = yield self._post_form(appid, post_url, {
+                'token': self.tokens[appid]['token'],
+                'lang': 'zh_CN',
+                'f': 'json',
+                'ajax': 1,
+                'type': 1,
+                'content': content,
+                'tofakeid': fakeid,
+                'random': random.random()
+            }, referer=referer_url)
+        except tornado.httpclient.HTTPError:
+            raise tornado.gen.Return({'err_code': 1001})
+        raise tornado.gen.Return(_parse_mp_resp(resp))
 
 # def check_same(timestamp, content, mtype, user):
 #     if mtype == 'text' and content:
@@ -211,9 +253,6 @@ class MockBrowser(object):
 #
 #
 # class WechatConnector(object):
-#
-
-#
 #     @tornado.gen.coroutine
 #     def find_user(self, timestamp, content, mtype, count, offset):
 #         referer = home_url + '?' + urllib.urlencode({
@@ -467,41 +506,6 @@ class MockBrowser(object):
 #             raise tornado.gen.Return({'err': 8, 'msg': result.get('msg', 'fail to save material')})
 #         else:
 #             raise tornado.gen.Return({'err': 8, 'msg': 'fail to save material'})
-#
-#     @tornado.gen.coroutine
-#     def send_text_message(self, fakeid, content):
-#         url = send_url + '?' + urllib.urlencode({
-#             't': 'ajax-response',
-#             'f': 'json',
-#             'token': self.token,
-#             'lang': 'zh_CN'})
-#         referer = send_page_url + '?' + urllib.urlencode({
-#             'tofakeid': fakeid,
-#             't': 'message/send',
-#             'action': 'index',
-#             'token': self.token,
-#             'lang': 'zh_CN'})
-#         result = yield self.post_data(url, {
-#             'token': self.token,
-#             'lang': 'zh_CN',
-#             'f': 'json',
-#             'ajax': 1,
-#             'type': 1,
-#             'content': content.encode('utf-8'),
-#             'tofakeid': fakeid,
-#             'random': random.random()
-#         }, referer=referer)
-#         print 'send_text_message response:', result
-#         sys.stdout.flush()
-#         try:
-#             if result and result['base_resp']['ret'] == -3:
-#                 raise tornado.gen.Return({'err': 6, 'msg': 'login expired'})
-#             elif result and result['base_resp']['ret'] == 0:
-#                 raise tornado.gen.Return({'err': 0, 'msg': result['base_resp']['err_msg']})
-#             else:
-#                 raise tornado.gen.Return({'err': 5, 'msg': result['base_resp']['err_msg']})
-#         except (KeyError, AttributeError, TypeError):
-#             raise tornado.gen.Return({'err': 5, 'msg': 'fail to send message'})
 #
 #     @tornado.gen.coroutine
 #     def multi_send_message(self, operation_seq, appmsgid, groupid):

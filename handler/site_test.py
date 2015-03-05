@@ -12,5 +12,6 @@ class TestHandler(SiteBaseHandler):
     @tornado.gen.coroutine
     def get(self, siteid):
         browser = MockBrowser()
-        result = yield browser.login('wxfc87c2547449c2c6')
+        yield browser.login('wxfc87c2547449c2c6')
+        result = yield browser.send_single_message('wxfc87c2547449c2c6', '1899417504', u'你好')
         self.send_response(result)
