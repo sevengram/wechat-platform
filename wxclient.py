@@ -7,6 +7,7 @@ import time
 import urllib
 import urlparse
 
+from bs4 import BeautifulSoup
 import tornado.gen
 import tornado.httpclient
 
@@ -14,6 +15,19 @@ import url
 import errinfo
 from util import http
 from wxstorage import wechat_storage
+
+
+def check_same(timestamp, content, mtype, user):
+    if mtype == 'text' and content:
+        return user['date_time'] == timestamp and user['content'].strip(
+            ' \t\r\n') == content.strip(' \t\r\n') and user['type'] == 1
+    elif mtype == 'location':
+        return user['date_time'] == timestamp and user['content'].startswith(
+            'http://weixin.qq.com/cgi-bin/redirectforward') and user['type'] == 1
+    elif mtype == 'image':
+        return user['date_time'] == timestamp and user['type'] == 2
+    else:
+        return False
 
 
 def _parse_wechat_resp(resp):
@@ -33,11 +47,11 @@ def _parse_mp_resp(resp):
     resp_data = json.loads(resp.body)
     try:
         if resp_data and resp_data['base_resp']['ret'] == -3:
-            return {'err_code': 1101}
+            return {'err_code': 7001}
         elif resp_data and resp_data['base_resp']['ret'] == 0:
             return {'err_code': 0, 'data': resp_data}
         else:
-            return {'err_code': 1102}
+            return {'err_code': 7002}
     except (KeyError, AttributeError, TypeError):
         return {'err_code': 9003}
 
@@ -200,16 +214,15 @@ class MockBrowser(object):
         result = _parse_mp_resp(resp)
         if result.get('err_code', 1) != 0:
             raise tornado.gen.Return(result)
-        else:
-            result_data = result.get('data')
-            self.tokens[appid] = {
-                'last_login': time.time(),
-                'token': dict(urlparse.parse_qsl(result_data['redirect_url']))['token']
-            }
-            raise tornado.gen.Return({
-                'err_code': 0,
-                'data': {'token': self.tokens[appid]['token']}
-            })
+        result_data = result.get('data')
+        self.tokens[appid] = {
+            'last_login': time.time(),
+            'token': dict(urlparse.parse_qsl(result_data['redirect_url']))['token']
+        }
+        raise tornado.gen.Return({
+            'err_code': 0,
+            'data': {'token': self.tokens[appid]['token']}
+        })
 
     @tornado.gen.coroutine
     def send_single_message(self, appid, fakeid, content):
@@ -239,69 +252,52 @@ class MockBrowser(object):
             raise tornado.gen.Return({'err_code': 1001})
         raise tornado.gen.Return(_parse_mp_resp(resp))
 
-# def check_same(timestamp, content, mtype, user):
-#     if mtype == 'text' and content:
-#         return user['date_time'] == timestamp and user['content'].strip(
-#             ' \t\r\n') == content.strip(' \t\r\n') and user['type'] == 1
-#     elif mtype == 'location':
-#         return user['date_time'] == timestamp and user['content'].startswith(
-#             'http://weixin.qq.com/cgi-bin/redirectforward') and user['type'] == 1
-#     elif mtype == 'image':
-#         return user['date_time'] == timestamp and user['type'] == 2
-#     else:
-#         return False
-#
-#
+    @tornado.gen.coroutine
+    def find_user(self, appid, timestamp, content, mtype, count=30, offset=0):
+        referer_url = url.mp_home + '?' + urllib.urlencode({
+            't': 'home/index',
+            'token': self.tokens[appid]['token'],
+            'lang': 'zh_CN'})
+        try:
+            resp = yield self._get(appid, url.mp_message, {
+                'count': count,
+                'offset': offset,
+                'day': 7,
+                'token': self.tokens[appid]['token']
+            }, referer=referer_url)
+        except tornado.httpclient.HTTPError:
+            raise tornado.gen.Return({'err_code': 1001})
+        if resp.code != 200:
+            raise tornado.gen.Return({'err_code': 1001})
+
+        raw = BeautifulSoup(resp.body)
+        try:
+            t = raw.find_all('script', {'type': 'text/javascript', 'src': ''})[-1].text
+            users = json.loads(t[t.index('['):t.rindex(']') + 1], encoding='utf-8')
+        except (ValueError, IndexError):
+            users = None
+
+        if not users:
+            try:
+                if raw.find('div', {'class': 'msg_content'}).text.strip().startswith(u'\u767b'):
+                    raise tornado.gen.Return({'err_code': 7001})
+            except AttributeError:
+                pass
+            raise tornado.gen.Return({'err_code': 7101})
+
+        for i in range(0, len(users) - 1):
+            if users[i]['date_time'] < timestamp:
+                raise tornado.gen.Return({'err_code': 7101})
+            elif check_same(timestamp, content, mtype, users[i]):
+                if not check_same(timestamp, content, mtype, users[i + 1]):
+                    raise tornado.gen.Return({'err_code': 0, 'data': users[i]})
+                else:
+                    raise tornado.gen.Return({'err_code': 7101})
+        res = yield self.find_user(timestamp, content, mtype, count, count + offset - 1)
+        raise tornado.gen.Return(res)
+
+
 # class WechatConnector(object):
-#     @tornado.gen.coroutine
-#     def find_user(self, timestamp, content, mtype, count, offset):
-#         referer = home_url + '?' + urllib.urlencode({
-#             't': 'home/index',
-#             'token': self.token,
-#             'lang': 'zh_CN'})
-#         result = yield self.get_request(message_url, {
-#             'count': count,
-#             'offset': offset,
-#             'day': 7,
-#             'token': self.token
-#         }, referer=referer)
-#         raw = BeautifulSoup(result)
-#         try:
-#             t = raw.find_all(
-#                 'script', {'type': 'text/javascript', 'src': ''})[-1].text
-#             users = json.loads(
-#                 t[t.index('['):t.rindex(']') + 1], encoding='utf-8')
-#         except (ValueError, IndexError):
-#             users = None
-#
-#         if not users:
-#             try:
-#                 if raw.find('div', {'class': 'msg_content'}).text.strip().startswith(u'\u767b'):
-#                     print 'find_user failed: login expired'
-#                     sys.stdout.flush()
-#                     raise tornado.gen.Return({'err': 6, 'msg': 'login expired'})
-#             except AttributeError:
-#                 pass
-#             print 'find_user failed'
-#             sys.stdout.flush()
-#             raise tornado.gen.Return({'err': 4, 'msg': 'fail to find user'})
-#
-#         for i in range(0, len(users) - 1):
-#             if users[i]['date_time'] < timestamp:
-#                 print 'find_user failed: no match 1'
-#                 sys.stdout.flush()
-#                 raise tornado.gen.Return({'err': 4, 'msg': 'fail to find user'})
-#             elif check_same(timestamp, content, mtype, users[i]):
-#                 if not check_same(timestamp, content, mtype, users[i + 1]):
-#                     print 'find_user success: ', users[i]
-#                     sys.stdout.flush()
-#                     raise tornado.gen.Return({'err': 0, 'msg': users[i]})
-#                 else:
-#                     print 'find_user failed: no match 2'
-#                     sys.stdout.flush()
-#                     raise tornado.gen.Return({'err': 4, 'msg': 'fail to find user'})
-#         res = yield self.find_user(timestamp, content, mtype, count, count + offset - 1)
-#         raise tornado.gen.Return(res)
 #
 #     @tornado.gen.coroutine
 #     def get_operation_seq(self):
