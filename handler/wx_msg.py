@@ -78,7 +78,6 @@ class WechatMsgHandler(BaseHandler):
         )
         appinfo = self.storage.get_app_info(openid=self.post_args['ToUserName'])
         req_data['appid'] = appinfo['appid']
-        req_data['uid'] = security.get_uid(req_data['appid'], req_data['openid'])
         site_info = self.storage.get_site_info(appinfo['siteid'])
         security.add_sign(req_data, site_info['sitekey'])
         try:

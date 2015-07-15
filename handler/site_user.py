@@ -6,37 +6,38 @@ import tornado.httpclient
 import url
 import wxclient
 from handler.site_base import SiteBaseHandler
-from util import http, dtools, security
+from util import http, dtools
+
+user_attrs = [
+    'uid',
+    'appid',
+    'openid',
+    'unionid',
+    'nickname',
+    'subscribe',
+    'sex',
+    'city',
+    'province',
+    'country',
+    'language',
+    'headimgurl',
+    'subscribe_time'
+]
 
 
 class UserHandler(SiteBaseHandler):
     @tornado.gen.coroutine
     def get(self, siteid, uid):
         # Search user info from db
-        user_info = self.storage.get_user_info(appid=self.get_argument('appid'),
-                                               openid=self.get_argument('openid'))
-        get_resp_data = dtools.transfer(
-            user_info,
-            copys=[
-                'uid',
-                'appid',
-                'openid',
-                'unionid',
-                'nickname',
-                'subscribe',
-                'sex',
-                'city',
-                'province',
-                'country',
-                'headimgurl',
-                'subscribe_time'
-            ])
+        user_info = self.storage.get_user_info(uid)
+        get_resp_data = dtools.transfer(user_info, copys=user_attrs)
         self.send_response(get_resp_data)
 
     @tornado.gen.coroutine
     def put(self, siteid, uid):
-        appid = self.get_argument('appid')
-        openid = self.get_argument('openid')
+        user_info = self.storage.get_user_info(uid)
+        appid = user_info['appid']
+        openid = user_info['openid']
 
         # Update user info from wechat
         user_info_result = yield wxclient.get_user_info(appid, openid)
@@ -44,12 +45,11 @@ class UserHandler(SiteBaseHandler):
         if err_code != 0:
             self.send_response(err_code=err_code)
         else:
-            post_resp_data = dict(user_info_result['data'],
-                                  appid=appid,
-                                  uid=security.get_uid(appid, openid),
-                                  lang=user_info_result['data'].get('language', ''))
+            post_resp_data = dtools.transfer(
+                dict(user_info_result['data'], appid=appid, uid=int(uid)),
+                copys=user_attrs)
             self.send_response(data=post_resp_data)
-            self.storage.add_user_info(post_resp_data, noninsert=['remark', 'language'])
+            self.storage.add_user_info(post_resp_data)
 
     @tornado.gen.coroutine
     def post(self, siteid):
@@ -74,10 +74,9 @@ class UserHandler(SiteBaseHandler):
         resp_data1 = self.parse_oauth_resp(resp1)
         if resp_data1:
             openid = resp_data1['openid']
-            post_resp_data = {
+            user_info = {
                 'openid': openid,
                 'appid': appid,
-                'uid': security.get_uid(appid, openid)
             }
             # Get user info from wechat
             if 'snsapi_userinfo' in [v.strip() for v in resp_data1['scope'].split(',')]:
@@ -93,7 +92,7 @@ class UserHandler(SiteBaseHandler):
                     raise tornado.gen.Return()
                 resp_data2 = self.parse_oauth_resp(resp2)
                 if resp_data2:
-                    post_resp_data.update(resp_data2)
-                    post_resp_data['lang'] = post_resp_data.get('language', '')
+                    user_info.update(resp_data2)
+            post_resp_data = dtools.transfer(user_info, copys=user_attrs)
             self.send_response(post_resp_data)
-            self.storage.add_user_info(post_resp_data, noninsert=['privilege', 'language'])
+            self.storage.add_user_info(post_resp_data)

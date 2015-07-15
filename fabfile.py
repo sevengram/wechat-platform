@@ -7,8 +7,8 @@ from fabric.api import run, env, execute, task, cd, settings
 env.roledefs = {
     'root@qa': ['root@sirius-a'],
     'wechat@qa': ['wechat@sirius-a'],
-    'root@prod': ['root@wechat-server'],
-    'wechat@prod': ['wechat@wechat-server']
+    'root@prod': ['root@sirius-a'],
+    'wechat@prod': ['wechat@sirius-a']
 }
 env.key_filename = '~/.ssh/id_rsa'
 

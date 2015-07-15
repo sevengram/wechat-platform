@@ -66,12 +66,13 @@ def _get_access_token(appid, refresh=False):
                 'data': {'access_token': token}
             })
     try:
+        app_info = wechat_storage.get_app_info(appid=appid)
         resp = yield http.get_dict(
             url=url.wechat_basic_access_token,
             data={
                 'grant_type': 'client_credential',
                 'appid': appid,
-                'secret': wechat_storage.get_app_info(appid=appid, select_key='secret')
+                'secret': app_info['secret']
             })
     except tornado.httpclient.HTTPError:
         raise tornado.gen.Return({'err_code': 1001})
@@ -81,7 +82,8 @@ def _get_access_token(appid, refresh=False):
         raise tornado.gen.Return(result)
     else:
         result_data = result.get('data')
-        wechat_storage.add_access_token(appid, result_data.get('access_token'), result_data.get('expires_in'))
+        wechat_storage.add_access_token(app_info['id'], appid, result_data.get('access_token'),
+                                        result_data.get('expires_in'))
         raise tornado.gen.Return(result)
 
 
@@ -295,7 +297,6 @@ class MockBrowser(object):
                     raise tornado.gen.Return({'err_code': 7101})
         res = yield self.find_user(timestamp, content, mtype, count, count + offset - 1)
         raise tornado.gen.Return(res)
-
 
 # class WechatConnector(object):
 #

@@ -12,11 +12,12 @@ class WechatStorage(storage.Storage):
     def __init__(self, db_name, db_host, db_user, db_pwd):
         super(WechatStorage, self).__init__(db_name, db_host, db_user, db_pwd)
 
-    def add_user_info(self, user, noninsert=None):
-        self.replace('wechat_user_info', user, noninsert=noninsert)
+    def add_user_info(self, user):
+        self.replace('wechat_user_info', user)
 
-    def add_access_token(self, appid, access_token, expires_in):
+    def add_access_token(self, pid, appid, access_token, expires_in):
         self.replace('wechat_app_token', {
+            'id': pid,
             'appid': appid,
             'access_token': access_token,
             'expires_in': expires_in,
@@ -35,7 +36,7 @@ class WechatStorage(storage.Storage):
 
     def get_app_info(self, appid='', openid='', select_key='*'):
         return self.get('wechat_app_info',
-                        {'openid': openid, 'appid': appid},
+                        {'appid': appid, 'openid': openid},
                         select_key=select_key)
 
     def get_site_info(self, siteid, select_key='*'):
@@ -43,9 +44,9 @@ class WechatStorage(storage.Storage):
                         {'siteid': siteid},
                         select_key=select_key)
 
-    def get_user_info(self, appid, openid='', unionid='', select_key='*'):
+    def get_user_info(self, uid='', appid='', openid='', unionid='', select_key='*'):
         return self.get('wechat_user_info',
-                        {'appid': appid, 'openid': openid, 'unionid': unionid},
+                        {'uid': uid, 'appid': appid, 'openid': openid, 'unionid': unionid},
                         select_key=select_key)
 
 
