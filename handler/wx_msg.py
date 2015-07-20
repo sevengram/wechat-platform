@@ -18,7 +18,8 @@ def build_response(from_id, to_id, data):
     result = {
         'FromUserName': from_id,
         'ToUserName': to_id,
-        'MsgType': msg_type
+        'MsgType': msg_type,
+        'Tag': data.get('tag', '')
     }
     if msg_type == 'text':
         result.update({

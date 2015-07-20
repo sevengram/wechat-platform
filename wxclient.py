@@ -161,10 +161,6 @@ class MockBrowser(object):
                     else:
                         self.cookies[appid].pop(morsel.key, None)
 
-    def has_login(self, appid):
-        return appid in self.tokens and appid in self.cookies and self.cookies[appid].get('slave_sid') and self.cookies[
-            appid].get('data_ticket') and time.time() - self.tokens[appid].get('last_login', 0) < 60 * 20
-
     @tornado.gen.coroutine
     def _post_form(self, appid, post_url, data, **kwargs):
         headers = dict(_default_headers, **{
@@ -200,6 +196,10 @@ class MockBrowser(object):
         if resp.code == 200:
             self._set_cookies(appid, resp.headers)
         raise tornado.gen.Return(resp)
+
+    def has_login(self, appid):
+        return appid in self.tokens and appid in self.cookies and self.cookies[appid].get('slave_sid') and self.cookies[
+            appid].get('data_ticket') and time.time() - self.tokens[appid].get('last_login', 0) < 60 * 20
 
     @tornado.gen.coroutine
     def login(self, appid):
@@ -274,7 +274,7 @@ class MockBrowser(object):
 
         raw = BeautifulSoup(resp.body)
         try:
-            t = raw.find_all('script', {'type': 'text/javascript', 'src': ''})[-1].text
+            t = raw.find_all('script', {'type': 'text/javascript', 'src': ''})[-2].text
             users = json.loads(t[t.index('['):t.rindex(']') + 1], encoding='utf-8')
         except (ValueError, IndexError):
             users = None
@@ -314,7 +314,7 @@ class MockBrowser(object):
 #         raw = BeautifulSoup(result)
 #         try:
 #             t = raw.find_all(
-#                 'script', {'type': 'text/javascript', 'src': ''})[-1].text
+#                 'script', {'type': 'text/javascript', 'src': ''})[-2].text
 #             s = t[t.find('operation_seq'):].split(',')[0]
 #             seq = s[s.index('\"') + 1:s.rindex('\"')]
 #         except (ValueError, IndexError):
@@ -402,7 +402,7 @@ class MockBrowser(object):
 #         itemid = None
 #         try:
 #             t = raw.find_all(
-#                 'script', {'type': 'text/javascript', 'src': ''})[-1].text
+#                 'script', {'type': 'text/javascript', 'src': ''})[-2].text
 #             items = json.loads(t[t.index('{'):t.rindex('}') + 1], encoding='utf-8')
 #             for item in items['item']:
 #                 if title == item['title']:

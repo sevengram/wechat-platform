@@ -5,10 +5,10 @@ import ConfigParser
 
 from tornado.options import options
 
-from util import storage
+from util import sqldb
 
 
-class WechatStorage(storage.Storage):
+class WechatStorage(sqldb.Sqldb):
     def __init__(self, db_name, db_host, db_user, db_pwd):
         super(WechatStorage, self).__init__(db_name, db_host, db_user, db_pwd)
 
