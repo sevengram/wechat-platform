@@ -22,7 +22,8 @@ class WechatPayHandler(BaseHandler):
     def prepare(self):
         self.post_args = dtools.xml2dict(self.request.body)
         if self.sign_check:
-            self.check_signature(self.post_args, method='md5')
+            key = self.storage.get_app_info(self.post_args.get('appid'), select_key='apikey')
+            self.check_signature(self.post_args, sign_key=key, method='md5')
 
     @tornado.gen.coroutine
     def post(self):
@@ -61,9 +62,6 @@ class WechatPayHandler(BaseHandler):
                 self.send_response(err_code=9101)
         else:
             self.send_response(err_code=9002)
-
-    def get_check_key(self, refer_dict):
-        return self.storage.get_app_info(appid=refer_dict['appid'], select_key='apikey')
 
     def send_response(self, data=None, err_code=0, err_msg=''):
         if not data:

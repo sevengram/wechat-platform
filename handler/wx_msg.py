@@ -56,7 +56,9 @@ class WechatMsgHandler(BaseHandler):
     @tornado.gen.coroutine
     def prepare(self):
         if self.sign_check:
-            self.check_signature({k: v[0] for k, v in self.request.arguments.iteritems() if v}, method='sha1')
+            self.check_signature({k: v[0] for k, v in self.request.arguments.iteritems() if v},
+                                 sign_key='wechat_platform',
+                                 method='sha1')
 
     @tornado.gen.coroutine
     def get(self):
@@ -103,9 +105,6 @@ class WechatMsgHandler(BaseHandler):
                 self.send_response(err_code=9003)
         except ValueError:
             self.send_response(err_code=9101)
-
-    def get_check_key(self, refer_dict):
-        return 'wechat_platform'
 
     def send_response(self, data=None, err_code=0, err_msg=''):
         if data:

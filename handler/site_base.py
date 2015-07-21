@@ -18,7 +18,9 @@ class SiteBaseHandler(BaseHandler):
     def prepare(self):
         if self.sign_check:
             parts = self.request.path.split('/')
-            self.check_signature({'siteid': parts[parts.index('sites') + 1]}, method='md5')
+            key = self.storage.get_site_info(parts[parts.index('sites') + 1], select_key='sitekey')
+            self.check_signature({k: v[0] for k, v in self.request.arguments.iteritems() if v},
+                                 sign_key=key, method='md5')
 
     def head(self, *args, **kwargs):
         raise HTTPError(405)
@@ -40,9 +42,6 @@ class SiteBaseHandler(BaseHandler):
 
     def options(self, *args, **kwargs):
         raise HTTPError(405)
-
-    def get_check_key(self, refer_dict):
-        return self.storage.get_site_info(refer_dict['siteid'], select_key='sitekey')
 
     def parse_payment_resp(self, resp, sign_key):
         if resp.code != 200:
