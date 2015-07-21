@@ -1,2 +1,2 @@
 rspec: 
-  script: "ls"
+  script: "ll"
