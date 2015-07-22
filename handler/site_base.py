@@ -11,7 +11,7 @@ from wxstorage import wechat_storage
 
 
 class SiteBaseHandler(BaseHandler):
-    def initialize(self, sign_check=False):
+    def initialize(self, sign_check=True):
         super(SiteBaseHandler, self).initialize(sign_check=sign_check)
         self.storage = wechat_storage
 
