@@ -274,7 +274,7 @@ class MockBrowser(object):
 
         raw = BeautifulSoup(resp.body)
         try:
-            t = raw.find_all('script', {'type': 'text/javascript', 'src': ''})[-2].text
+            t = raw.find_all('script', {'type': 'text/javascript', 'src': ''})[-2].text  # TODO: Fix hardcode index
             users = json.loads(t[t.index('['):t.rindex(']') + 1], encoding='utf-8')
         except (ValueError, IndexError):
             users = None
@@ -297,6 +297,8 @@ class MockBrowser(object):
                     raise tornado.gen.Return({'err_code': 7101})
         res = yield self.find_user(timestamp, content, mtype, count, count + offset - 1)
         raise tornado.gen.Return(res)
+
+mock_browser = MockBrowser()
 
 # class WechatConnector(object):
 #
