@@ -76,7 +76,9 @@ class WechatMsgHandler(BaseHandler):
                 ('MsgId', 'msg_id'),
                 ('CreateTime', 'msg_time'),
                 ('Content', 'content'),
-                ('Event', 'event_type')],
+                ('Event', 'event_type'),
+                ('PicUrl', 'pic_url'),
+                ('MediaId', 'media_id')],
             allow_empty=False
         )
         appinfo = self.storage.get_app_info(openid=self.post_args['ToUserName'])
