@@ -40,3 +40,5 @@ mp_upload = mp_base + '/cgi-bin/filetransfer'
 mp_save_material = mp_base + '/cgi-bin/operate_appmsg'
 
 mp_message = mp_base + '/cgi-bin/message'
+
+mp_contact_info = mp_base + '/cgi-bin/getcontactinfo'

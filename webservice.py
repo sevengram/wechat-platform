@@ -35,8 +35,7 @@ if __name__ == '__main__':
             (r'/sites/(\w+)/users/(\w+)', site_user.UserHandler, param),
             (r'/sites/(\w+)/orders', site_order.OrderHandler, param),
             (r'/sites/(\w+)/orders/(\w+)', site_order.OrderHandler, param),
-            (r'/sites/(\w+)/msgs', site_msgs.MsgsHandler, param),
-            # (r'/sites/(\w+)/test', site_test.TestHandler, param)
+            (r'/sites/(\w+)/msgs', site_msgs.MsgsHandler, param)
         ], debug=debug
     )
     http_server = tornado.httpserver.HTTPServer(application, xheaders=True)

@@ -88,19 +88,18 @@ class WechatMsgHandler(BaseHandler):
         site_info = self.storage.get_site_info(appinfo['siteid'])
         security.add_sign(req_data, site_info['sitekey'])
         try:
-            resp = yield http.post_dict(
+            contact_resp = yield http.post_dict(
                 url=site_info['msg_notify_url'],
                 data=req_data)
         except tornado.httpclient.HTTPError:
             self.send_response(err_code=9002)
             raise tornado.gen.Return()
-
-        if resp.code != 200:
+        if contact_resp.code != 200:
             self.send_response(err_code=9002)
             raise tornado.gen.Return()
 
         try:
-            resp_data = json.loads(resp.body)
+            resp_data = json.loads(contact_resp.body)
             if resp_data.get('err_code', 1) == 0:
                 self.send_response(build_response(from_id=self.post_args['ToUserName'],
                                                   to_id=self.post_args['FromUserName'],
@@ -110,6 +109,7 @@ class WechatMsgHandler(BaseHandler):
         except ValueError:
             self.send_response(err_code=9101)
 
+        # Add basic user info
         openid = req_data['openid']
         user_info = self.storage.get_user_info(appid=appid, openid=openid)
         if not user_info:
@@ -120,19 +120,35 @@ class WechatMsgHandler(BaseHandler):
                     'appid': appid,
                     'openid': openid
                 })
+
+        # Add more user info
         if not user_info or not user_info.get('fakeid'):
-            user_record = yield wxclient.mock_browser.find_user(
+            user_resp = yield wxclient.mock_browser.find_user(
                 appid=appid,
                 timestamp=long(req_data['msg_time']),
                 content=req_data['content'],
                 mtype=req_data['msg_type'])
-            if user_record['err_code'] == 0:
-                self.storage.add_user_info({
+            if user_resp['err_code'] == 0:
+                more_info = {
                     'appid': appid,
                     'openid': openid,
-                    'fakeid': user_record['data']['fakeid'],
-                    'nickname': user_record['data']['nick_name']
-                })
+                    'fakeid': user_resp['data']['fakeid'],
+                    'nickname': user_resp['data']['nick_name']
+                }
+                if not appinfo['is_verified']:
+                    contact_resp = yield wxclient.mock_browser.get_contact_info(
+                        appid=appid,
+                        fakeid=user_resp['data']['fakeid'],
+                        msg_id=user_resp['data']['id']
+                    )
+                    contact_info = contact_resp['data']['contact_info']
+                    more_info.update({
+                        'sex': contact_info['gender'],
+                        'city': contact_info['city'],
+                        'province': contact_info['province'],
+                        'country': contact_info['country']
+                    })
+                self.storage.add_user_info(more_info)
 
     def send_response(self, data=None, err_code=0, err_msg=''):
         if data:

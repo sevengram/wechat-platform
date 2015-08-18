@@ -60,7 +60,7 @@ def _parse_mp_resp(resp):
 @tornado.gen.coroutine
 def _get_access_token(appid, refresh=False):
     if not refresh:
-        token = wechat_storage.get_access_token(appid)
+        token = wechat_storage.get_access_token(appid)  # TODO: move this to redis
         if token:
             raise tornado.gen.Return({
                 'err_code': 0,
@@ -162,8 +162,8 @@ _default_headers = {
 
 class MockBrowser(object):
     def __init__(self):
-        self.tokens = {}
-        self.cookies = {}
+        self.tokens = {}  # TODO: move this to redis
+        self.cookies = {}  # TODO: move this to redis
 
     def _init_cookies(self, appid):
         appinfo = wechat_storage.get_app_info(appid)
@@ -290,13 +290,14 @@ class MockBrowser(object):
         raise tornado.gen.Return(_parse_mp_resp(resp))
 
     @tornado.gen.coroutine
-    def _find_user(self, appid, timestamp, content, mtype, count=30, offset=0):
+    def _find_user(self, appid, timestamp, content, mtype, count=50, offset=0):
         referer_url = url.mp_home + '?' + urllib.urlencode({
             't': 'home/index',
             'token': self.tokens[appid]['token'],
             'lang': 'zh_CN'})
         try:
             resp = yield self._get(appid, url.mp_message, {
+                't': 'message/list',
                 'count': count,
                 'offset': offset,
                 'day': 7,
@@ -326,9 +327,36 @@ class MockBrowser(object):
                 raise tornado.gen.Return({'err_code': 7101})
             elif check_same(timestamp, content, mtype, users[i]):
                 raise tornado.gen.Return({'err_code': 0, 'data': users[i]})
-        res = yield self._find_user(timestamp, content, mtype, count, count + offset - 1)
+        res = yield self._find_user(appid, timestamp, content, mtype, count, count + offset - 1)
         raise tornado.gen.Return(res)
 
+    @tornado.gen.coroutine
+    def _get_contact_info(self, appid, fakeid, msg_id):
+        post_url = url.mp_contact_info + '?' + urllib.urlencode({
+            't': 'ajax-getcontactinfo',
+            'fakeid': fakeid,
+            'msg_id': msg_id,
+            'lang': 'zh_CN'})
+        referer_url = url.mp_message + '?' + urllib.urlencode({
+            't': 'message/list',
+            'count': 30,
+            'offset': 0,
+            'day': 7,
+            'token': self.tokens[appid]['token']
+        })
+        try:
+            resp = yield self._post_form(appid, post_url, {
+                'token': self.tokens[appid]['token'],
+                'lang': 'zh_CN',
+                'f': 'json',
+                'ajax': 1,
+                'random': random.random()
+            }, referer=referer_url)
+        except tornado.httpclient.HTTPError:
+            raise tornado.gen.Return({'err_code': 1001})
+        raise tornado.gen.Return(_parse_mp_resp(resp))
+
+    # TODO: change this to common dynamic function
     @tornado.gen.coroutine
     def send_single_message(self, appid, fakeid, content, retry_limit=1, retry_count=0):
         if not self.has_login(appid):
@@ -340,7 +368,7 @@ class MockBrowser(object):
         raise tornado.gen.Return(res)
 
     @tornado.gen.coroutine
-    def find_user(self, appid, timestamp, content, mtype, retry_limit=1, retry_count=0):
+    def find_user(self, appid, timestamp, content, mtype, retry_limit=2, retry_count=0):
         if not self.has_login(appid):
             yield self.login(appid)
         res = yield self._find_user(appid, timestamp, content, mtype)
@@ -348,6 +376,16 @@ class MockBrowser(object):
             yield tornado.gen.Task(tornado.ioloop.IOLoop.instance().add_timeout, time.time() + 10)
             self.clear_login(appid)
             res = yield self.find_user(appid, timestamp, content, mtype, retry_limit, retry_count + 1)
+        raise tornado.gen.Return(res)
+
+    @tornado.gen.coroutine
+    def get_contact_info(self, appid, fakeid, msg_id, retry_limit=1, retry_count=0):
+        if not self.has_login(appid):
+            yield self.login(appid)
+        res = yield self._get_contact_info(appid, fakeid, msg_id)
+        if res.get('err_code', 1) != 0 and retry_count < retry_limit:
+            self.clear_login(appid)
+            res = yield self.get_contact_info(appid, fakeid, msg_id, retry_limit, retry_count + 1)
         raise tornado.gen.Return(res)
 
 
