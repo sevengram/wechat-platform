@@ -21,8 +21,7 @@ user_attrs = [
     'country',
     'language',
     'headimgurl',
-    'subscribe_time'
-]
+    'subscribe_time']
 
 
 class UserHandler(SiteBaseHandler):
@@ -36,20 +35,14 @@ class UserHandler(SiteBaseHandler):
     @tornado.gen.coroutine
     def put(self, siteid, uid):
         user_info = self.storage.get_user_info(uid)
-        appid = user_info['appid']
-        openid = user_info['openid']
-
         # Update user info from wechat
-        user_info_result = yield wxclient.get_user_info(appid, openid)
-        err_code = user_info_result.get('err_code', 1)
+        res = yield wxclient.update_user_info(user_info['appid'], user_info['openid'])
+        err_code = res.get('err_code', 1)
         if err_code != 0:
             self.send_response(err_code=err_code)
         else:
-            post_resp_data = dtools.transfer(
-                dict(user_info_result['data'], appid=appid, uid=int(uid)),
-                copys=user_attrs)
-            self.send_response(data=post_resp_data)
-            self.storage.add_user_info(post_resp_data)
+            res['data']['uid'] = int(uid)
+            self.send_response(data=res['data'])
 
     @tornado.gen.coroutine
     def post(self, siteid):
@@ -59,40 +52,51 @@ class UserHandler(SiteBaseHandler):
             self.send_response(err_code=3201)
             raise tornado.gen.Return()
 
-        req_data1 = {
-            'code': self.get_argument('code'),
-            'appid': appid,
-            'secret': appinfo['secret'],
-            'grant_type': 'authorization_code',
-        }
-        try:
-            resp1 = yield http.get_dict(url=url.wechat_oauth_access_token, data=req_data1)
-        except tornado.httpclient.HTTPError:
-            self.send_response(err_code=1001)
-            raise tornado.gen.Return()
+        openid = self.get_argument('openid')
+        if openid:
+            res = yield wxclient.update_user_info(appid, openid)
+            if res.get('err_code', 1) == 0:
+                self.send_response(data=res['data'])
+                raise tornado.gen.Return()
 
-        resp_data1 = self.parse_oauth_resp(resp1)
-        if resp_data1:
-            openid = resp_data1['openid']
-            user_info = {
-                'openid': openid,
+        code = self.get_argument('code')
+        if code:
+            req_data1 = {
+                'code': code,
                 'appid': appid,
+                'secret': appinfo['secret'],
+                'grant_type': 'authorization_code',
             }
-            # Get user info from wechat
-            if 'snsapi_userinfo' in [v.strip() for v in resp_data1['scope'].split(',')]:
-                req_data2 = {
-                    'access_token': resp_data1['access_token'],
+            try:
+                resp1 = yield http.get_dict(url=url.wechat_oauth_access_token, data=req_data1)
+            except tornado.httpclient.HTTPError:
+                self.send_response(err_code=1001)
+                raise tornado.gen.Return()
+
+            resp_data1 = self.parse_oauth_resp(resp1)
+            if resp_data1:
+                openid = resp_data1['openid']
+                res = {
                     'openid': openid,
-                    'lang': 'zh_CN'
+                    'appid': appid,
                 }
-                try:
-                    resp2 = yield http.get_dict(url=url.wechat_oauth_userinfo, data=req_data2)
-                except tornado.httpclient.HTTPError:
-                    self.send_response(err_code=1001)
-                    raise tornado.gen.Return()
-                resp_data2 = self.parse_oauth_resp(resp2)
-                if resp_data2:
-                    user_info.update(resp_data2)
-            post_resp_data = dtools.transfer(user_info, copys=user_attrs)
-            self.send_response(post_resp_data)
-            self.storage.add_user_info(post_resp_data)
+                # Get user info from wechat
+                if 'snsapi_userinfo' in [v.strip() for v in resp_data1['scope'].split(',')]:
+                    req_data2 = {
+                        'access_token': resp_data1['access_token'],
+                        'openid': openid,
+                        'lang': 'zh_CN'
+                    }
+                    try:
+                        resp2 = yield http.get_dict(url=url.wechat_oauth_userinfo, data=req_data2)
+                    except tornado.httpclient.HTTPError:
+                        self.send_response(err_code=1001)
+                        raise tornado.gen.Return()
+                    resp_data2 = self.parse_oauth_resp(resp2)
+                    if resp_data2:
+                        res.update(resp_data2)
+                post_resp_data = dtools.transfer(res, copys=user_attrs, allow_empty=False)
+                self.send_response(post_resp_data)
+                self.storage.add_user_info(post_resp_data)
+                raise tornado.gen.Return()
+        self.send_response(err_code=1)

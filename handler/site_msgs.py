@@ -15,8 +15,6 @@ class MsgsHandler(SiteBaseHandler):
         msg_type = self.get_argument('msg_type')
         content = self.get_argument('content', '')
 
-        if not mock_browser.has_login(appid):
-            yield mock_browser.login(appid)
         fakeid = wechat_storage.get_user_info(appid=appid, openid=openid, select_key='fakeid')
         if fakeid:
             if msg_type == 'text' and content:

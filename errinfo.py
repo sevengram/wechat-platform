@@ -75,6 +75,7 @@ wechat_map = defaultdict(lambda: (9001, '请求失败'), {
     40039: (9001, '不合法的URL长度'),
     40050: (9001, '不合法的分组id'),
     40051: (9001, '分组名字不合法'),
+    40125: (1003, '获取access_token时AppSecret错误, 或者access_token无效'),
     41001: (9001, '缺少access_token参数'),
     41002: (9001, '缺少appid参数'),
     41003: (9001, '缺少refresh_token参数'),

@@ -6,6 +6,7 @@ import time
 import tornado.gen
 import tornado.httpclient
 
+import wxclient
 from util import http, security, dtools
 from util.web import BaseHandler
 from wxstorage import wechat_storage
@@ -82,7 +83,8 @@ class WechatMsgHandler(BaseHandler):
             allow_empty=False
         )
         appinfo = self.storage.get_app_info(openid=self.post_args['ToUserName'])
-        req_data['appid'] = appinfo['appid']
+        appid = appinfo['appid']
+        req_data['appid'] = appid
         site_info = self.storage.get_site_info(appinfo['siteid'])
         security.add_sign(req_data, site_info['sitekey'])
         try:
@@ -107,6 +109,30 @@ class WechatMsgHandler(BaseHandler):
                 self.send_response(err_code=9003)
         except ValueError:
             self.send_response(err_code=9101)
+
+        openid = req_data['openid']
+        user_info = self.storage.get_user_info(appid=appid, openid=openid)
+        if not user_info:
+            if appinfo['is_verified']:
+                yield wxclient.update_user_info(appid, openid)
+            else:
+                self.storage.add_user_info({
+                    'appid': appid,
+                    'openid': openid
+                })
+        if not user_info or not user_info.get('fakeid'):
+            user_record = yield wxclient.mock_browser.find_user(
+                appid=appid,
+                timestamp=long(req_data['msg_time']),
+                content=req_data['content'],
+                mtype=req_data['msg_type'])
+            if user_record['err_code'] == 0:
+                self.storage.add_user_info({
+                    'appid': appid,
+                    'openid': openid,
+                    'fakeid': user_record['data']['fakeid'],
+                    'nickname': user_record['data']['nick_name']
+                })
 
     def send_response(self, data=None, err_code=0, err_msg=''):
         if data:

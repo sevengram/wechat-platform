@@ -10,10 +10,11 @@ import urlparse
 from bs4 import BeautifulSoup
 import tornado.gen
 import tornado.httpclient
+import tornado.ioloop
 
 import url
 import errinfo
-from util import http
+from util import http, dtools
 from wxstorage import wechat_storage
 
 
@@ -120,6 +121,34 @@ def get_user_info(appid, openid):
     raise tornado.gen.Return(resp)
 
 
+@tornado.gen.coroutine
+def update_user_info(appid, openid):
+    resp = yield get_user_info(appid, openid)
+    err_code = resp.get('err_code', 1)
+    if err_code != 0:
+        raise tornado.gen.Return({'err_code': err_code})
+    else:
+        resp['data']['appid'] = appid
+        user_info = dtools.transfer(
+            resp['data'], copys=[
+                'uid',
+                'appid',
+                'openid',
+                'unionid',
+                'nickname',
+                'subscribe',
+                'sex',
+                'city',
+                'province',
+                'country',
+                'language',
+                'headimgurl',
+                'subscribe_time'
+            ], allow_empty=False)
+        wechat_storage.add_user_info(user_info)
+        raise tornado.gen.Return({'err_code': 0, 'data': user_info})
+
+
 _default_headers = {
     'Connection': 'keep-alive',
     'Origin': url.mp_base,
@@ -141,7 +170,7 @@ class MockBrowser(object):
         self.cookies[appid] = {
             'data_bizuin': appinfo['data_bizuin'],
             'slave_user': appinfo['openid'],
-            'bizuin': appinfo['bizuin']
+            'bizuin': appinfo['fakeid']
         }
 
     def _build_cookies(self, appid):
@@ -201,6 +230,12 @@ class MockBrowser(object):
         return appid in self.tokens and appid in self.cookies and self.cookies[appid].get('slave_sid') and self.cookies[
             appid].get('data_ticket') and time.time() - self.tokens[appid].get('last_login', 0) < 60 * 20
 
+    def clear_login(self, appid):
+        if appid in self.tokens:
+            del self.tokens[appid]
+        if appid in self.cookies:
+            del self.cookies[appid]
+
     @tornado.gen.coroutine
     def login(self, appid):
         appinfo = wechat_storage.get_app_info(appid)
@@ -227,7 +262,7 @@ class MockBrowser(object):
         })
 
     @tornado.gen.coroutine
-    def send_single_message(self, appid, fakeid, content):
+    def _send_single_message(self, appid, fakeid, content):
         post_url = url.mp_singlesend + '?' + urllib.urlencode({
             't': 'ajax-response',
             'f': 'json',
@@ -255,7 +290,7 @@ class MockBrowser(object):
         raise tornado.gen.Return(_parse_mp_resp(resp))
 
     @tornado.gen.coroutine
-    def find_user(self, appid, timestamp, content, mtype, count=30, offset=0):
+    def _find_user(self, appid, timestamp, content, mtype, count=30, offset=0):
         referer_url = url.mp_home + '?' + urllib.urlencode({
             't': 'home/index',
             'token': self.tokens[appid]['token'],
@@ -273,33 +308,52 @@ class MockBrowser(object):
             raise tornado.gen.Return({'err_code': 1001})
 
         raw = BeautifulSoup(resp.body)
+        users = None
         try:
-            t = raw.find_all('script', {'type': 'text/javascript', 'src': ''})[-2].text  # TODO: Fix hardcode index
-            users = json.loads(t[t.index('['):t.rindex(']') + 1], encoding='utf-8')
+            ts = raw.find_all('script', {'type': 'text/javascript', 'src': ''})
+            for t in ts:
+                te = t.text
+                if te.strip(' \t\r\n').startswith('wx.cgiData'):
+                    users = json.loads(te[te.index('['):te.rindex(']') + 1], encoding='utf-8')
+                    break
         except (ValueError, IndexError):
-            users = None
+            pass
 
         if not users:
-            try:
-                if raw.find('div', {'class': 'msg_content'}).text.strip().startswith(u'\u767b'):
-                    raise tornado.gen.Return({'err_code': 7001})
-            except AttributeError:
-                pass
             raise tornado.gen.Return({'err_code': 7101})
-
         for i in range(0, len(users) - 1):
             if users[i]['date_time'] < timestamp:
                 raise tornado.gen.Return({'err_code': 7101})
             elif check_same(timestamp, content, mtype, users[i]):
-                if not check_same(timestamp, content, mtype, users[i + 1]):
-                    raise tornado.gen.Return({'err_code': 0, 'data': users[i]})
-                else:
-                    raise tornado.gen.Return({'err_code': 7101})
-        res = yield self.find_user(timestamp, content, mtype, count, count + offset - 1)
+                raise tornado.gen.Return({'err_code': 0, 'data': users[i]})
+        res = yield self._find_user(timestamp, content, mtype, count, count + offset - 1)
         raise tornado.gen.Return(res)
+
+    @tornado.gen.coroutine
+    def send_single_message(self, appid, fakeid, content, retry_limit=1, retry_count=0):
+        if not self.has_login(appid):
+            yield self.login(appid)
+        res = yield self._send_single_message(appid, fakeid, content)
+        if res.get('err_code', 1) != 0 and retry_count < retry_limit:
+            self.clear_login(appid)
+            res = yield self.send_single_message(appid, fakeid, content, retry_limit, retry_count + 1)
+        raise tornado.gen.Return(res)
+
+    @tornado.gen.coroutine
+    def find_user(self, appid, timestamp, content, mtype, retry_limit=1, retry_count=0):
+        if not self.has_login(appid):
+            yield self.login(appid)
+        res = yield self._find_user(appid, timestamp, content, mtype)
+        if res.get('err_code', 1) != 0 and retry_count < retry_limit:
+            yield tornado.gen.Task(tornado.ioloop.IOLoop.instance().add_timeout, time.time() + 10)
+            self.clear_login(appid)
+            res = yield self.find_user(appid, timestamp, content, mtype, retry_limit, retry_count + 1)
+        raise tornado.gen.Return(res)
+
 
 mock_browser = MockBrowser()
 
+# TODO: add multisend
 # class WechatConnector(object):
 #
 #     @tornado.gen.coroutine
