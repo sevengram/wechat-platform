@@ -4,6 +4,7 @@ import Cookie
 import json
 import random
 import time
+import logging
 import urllib
 import urlparse
 
@@ -231,6 +232,7 @@ class MockBrowser(object):
             appid].get('data_ticket') and time.time() - self.tokens[appid].get('last_login', 0) < 60 * 20
 
     def clear_login(self, appid):
+        logging.info('clear login: %s', appid)
         if appid in self.tokens:
             del self.tokens[appid]
         if appid in self.cookies:
@@ -247,15 +249,18 @@ class MockBrowser(object):
                 'pwd': pwd,
                 'f': 'json'})
         except tornado.httpclient.HTTPError:
+            logging.warning('login failed: %s', appid)
             raise tornado.gen.Return({'err_code': 1001})
         result = _parse_mp_resp(resp)
         if result.get('err_code', 1) != 0:
+            logging.warning('login failed: %s %s', appid, result)
             raise tornado.gen.Return(result)
         result_data = result.get('data')
         self.tokens[appid] = {
             'last_login': time.time(),
             'token': dict(urlparse.parse_qsl(result_data['redirect_url']))['token']
         }
+        logging.info('login success: %s', appid)
         raise tornado.gen.Return({
             'err_code': 0,
             'data': {'token': self.tokens[appid]['token']}
@@ -290,7 +295,7 @@ class MockBrowser(object):
         raise tornado.gen.Return(_parse_mp_resp(resp))
 
     @tornado.gen.coroutine
-    def _find_user(self, appid, timestamp, content, mtype, count=50, offset=0):
+    def _find_user(self, appid, timestamp, mtype, content, count=50, offset=0):
         referer_url = url.mp_home + '?' + urllib.urlencode({
             't': 'home/index',
             'token': self.tokens[appid]['token'],
@@ -321,13 +326,16 @@ class MockBrowser(object):
             pass
 
         if not users:
+            logging.warning('fail to catch user list: %s', appid)
             raise tornado.gen.Return({'err_code': 7101})
         for i in range(0, len(users) - 1):
             if users[i]['date_time'] < timestamp:
+                logging.warning('fail to find user: %s', appid)
                 raise tornado.gen.Return({'err_code': 7101})
             elif check_same(timestamp, content, mtype, users[i]):
+                logging.warning('user found: %s', users[i])
                 raise tornado.gen.Return({'err_code': 0, 'data': users[i]})
-        res = yield self._find_user(appid, timestamp, content, mtype, count, count + offset - 1)
+        res = yield self._find_user(appid, timestamp, mtype, content, count, count + offset - 1)
         raise tornado.gen.Return(res)
 
     @tornado.gen.coroutine
@@ -368,14 +376,14 @@ class MockBrowser(object):
         raise tornado.gen.Return(res)
 
     @tornado.gen.coroutine
-    def find_user(self, appid, timestamp, content, mtype, retry_limit=2, retry_count=0):
+    def find_user(self, appid, timestamp, mtype, content, retry_limit=2, retry_count=0):
         if not self.has_login(appid):
             yield self.login(appid)
-        res = yield self._find_user(appid, timestamp, content, mtype)
+        res = yield self._find_user(appid, timestamp, mtype, content)
         if res.get('err_code', 1) != 0 and retry_count < retry_limit:
             yield tornado.gen.Task(tornado.ioloop.IOLoop.instance().add_timeout, time.time() + 10)
             self.clear_login(appid)
-            res = yield self.find_user(appid, timestamp, content, mtype, retry_limit, retry_count + 1)
+            res = yield self.find_user(appid, timestamp, mtype, content, retry_limit, retry_count + 1)
         raise tornado.gen.Return(res)
 
     @tornado.gen.coroutine

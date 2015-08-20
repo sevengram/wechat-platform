@@ -2,6 +2,7 @@
 
 import json
 import time
+import logging
 
 import tornado.gen
 import tornado.httpclient
@@ -129,8 +130,9 @@ class WechatMsgHandler(BaseHandler):
             user_resp = yield wxclient.mock_browser.find_user(
                 appid=appid,
                 timestamp=long(req_data['msg_time']),
-                content=req_data['content'],
-                mtype=req_data['msg_type'])
+                mtype=req_data['msg_type'],
+                content=req_data.get('content', '')
+            )
             if user_resp['err_code'] == 0:
                 more_info = {
                     'appid': appid,
@@ -151,6 +153,7 @@ class WechatMsgHandler(BaseHandler):
                         'province': contact_info['province'],
                         'country': contact_info['country']
                     })
+                logging.info('userinfo updated: %s', more_info)
                 self.storage.add_user_info(more_info)
 
     def send_response(self, data=None, err_code=0, err_msg=''):
