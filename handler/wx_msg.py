@@ -79,6 +79,9 @@ class WechatMsgHandler(BaseHandler):
                 ('Content', 'content'),
                 ('Event', 'event_type'),
                 ('PicUrl', 'pic_url'),
+                ('Location_X', 'latitude'),
+                ('Location_Y', 'longitude'),
+                ('Label', 'label'),
                 ('MediaId', 'media_id')],
             allow_empty=False
         )
