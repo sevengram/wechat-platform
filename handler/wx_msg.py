@@ -86,25 +86,26 @@ class WechatMsgHandler(BaseHandler):
                 ('MediaId', 'media_id')],
             allow_empty=False
         )
+        logging.info('message from tencent: %s', req_data)
         appinfo = self.storage.get_app_info(openid=self.post_args['ToUserName'])
         appid = appinfo['appid']
         req_data['appid'] = appid
         site_info = self.storage.get_site_info(appinfo['siteid'])
         security.add_sign(req_data, site_info['sitekey'])
         try:
-            contact_resp = yield http.post_dict(
+            resp = yield http.post_dict(
                 url=site_info['msg_notify_url'],
                 data=req_data)
         except tornado.httpclient.HTTPError:
             self.send_response(err_code=9002)
             raise tornado.gen.Return()
-        if contact_resp.code != 200:
+        if resp.code != 200:
             self.send_response(err_code=9002)
             raise tornado.gen.Return()
 
         try:
-            resp_data = json.loads(contact_resp.body)
-            if resp_data.get('err_code', 1) == 0:
+            resp_data = json.loads(resp.body)
+            if resp_data.get('err_code') == 0:
                 self.send_response(build_response(from_id=self.post_args['ToUserName'],
                                                   to_id=self.post_args['FromUserName'],
                                                   data=resp_data.get('data')))
@@ -126,7 +127,7 @@ class WechatMsgHandler(BaseHandler):
                 })
 
         # Add more user info
-        if not user_info or not user_info.get('fakeid'):
+        if (not user_info or not user_info.get('fakeid')) and not req_data.get('event_type'):
             user_resp = yield wxclient.mock_browser.find_user(
                 appid=appid,
                 timestamp=long(req_data['msg_time']),

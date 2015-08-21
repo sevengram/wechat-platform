@@ -36,13 +36,12 @@ class UserHandler(SiteBaseHandler):
     def put(self, siteid, uid):
         user_info = self.storage.get_user_info(uid)
         # Update user info from wechat
-        res = yield wxclient.update_user_info(user_info['appid'], user_info['openid'])
-        err_code = res.get('err_code', 1)
-        if err_code != 0:
-            self.send_response(err_code=err_code)
+        resp = yield wxclient.update_user_info(user_info['appid'], user_info['openid'])
+        if resp['err_code'] != 0:
+            self.send_response(err_code=resp['err_code'])
         else:
-            res['data']['uid'] = int(uid)
-            self.send_response(data=res['data'])
+            resp['data']['uid'] = int(uid)
+            self.send_response(data=resp['data'])
 
     @tornado.gen.coroutine
     def post(self, siteid):
@@ -55,7 +54,7 @@ class UserHandler(SiteBaseHandler):
         openid = self.get_argument('openid')
         if openid:
             res = yield wxclient.update_user_info(appid, openid)
-            if res.get('err_code', 1) == 0:
+            if resp['err_code'] == 0:
                 self.send_response(data=res['data'])
                 raise tornado.gen.Return()
 

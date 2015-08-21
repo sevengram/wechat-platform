@@ -1,12 +1,15 @@
 # -*- coding: utf-8 -*-
 
 import Cookie
+import urllib
+import io
 import json
 import random
 import time
+import os
 import logging
-import urllib
 import urlparse
+from PIL import Image
 
 from bs4 import BeautifulSoup
 import tornado.gen
@@ -15,7 +18,7 @@ import tornado.ioloop
 
 import url
 import errinfo
-from util import http, dtools
+from util import http, dtools, security
 from wxstorage import wechat_storage
 
 
@@ -45,7 +48,7 @@ def _parse_wechat_resp(resp):
 
 def _parse_mp_resp(resp):
     if resp.code != 200:
-        return {'err_code': 1001}
+        return {'err_code': 7000}
     resp_data = json.loads(resp.body)
     try:
         if resp_data and resp_data['base_resp']['ret'] == -3:
@@ -78,9 +81,8 @@ def _get_access_token(appid, refresh=False):
             })
     except tornado.httpclient.HTTPError:
         raise tornado.gen.Return({'err_code': 1001})
-
     result = _parse_wechat_resp(resp)
-    if result.get('err_code', 1) != 0:
+    if resp['err_code'] != 0:
         raise tornado.gen.Return(result)
     else:
         result_data = result.get('data')
@@ -92,7 +94,7 @@ def _get_access_token(appid, refresh=False):
 @tornado.gen.coroutine
 def _wechat_api_call(appid, fn, fn_url, fn_data, retry=0):
     token_result = yield _get_access_token(appid, refresh=(retry != 0))
-    if token_result.get('err_code', 1) != 0:
+    if token_result['err_code'] != 0:
         raise tornado.gen.Return(token_result)
     try:
         resp = yield fn(
@@ -102,7 +104,7 @@ def _wechat_api_call(appid, fn, fn_url, fn_data, retry=0):
     except tornado.httpclient.HTTPError:
         raise tornado.gen.Return({'err_code': 1001})
     result = _parse_wechat_resp(resp)
-    if result.get('err_code', 1) == 1004 and retry < 3:
+    if result['err_code'] == 1004 and retry < 3:
         result = yield _wechat_api_call(appid, fn, fn_url, fn_data, retry + 1)
         raise tornado.gen.Return(result)
     else:
@@ -125,9 +127,8 @@ def get_user_info(appid, openid):
 @tornado.gen.coroutine
 def update_user_info(appid, openid):
     resp = yield get_user_info(appid, openid)
-    err_code = resp.get('err_code', 1)
-    if err_code != 0:
-        raise tornado.gen.Return({'err_code': err_code})
+    if resp['err_code'] != 0:
+        raise tornado.gen.Return({'err_code': resp['err_code']})
     else:
         resp['data']['appid'] = appid
         user_info = dtools.transfer(
@@ -227,6 +228,18 @@ class MockBrowser(object):
             self._set_cookies(appid, resp.headers)
         raise tornado.gen.Return(resp)
 
+    @tornado.gen.coroutine
+    def _mock_api_call(self, fn, appid, retry_limit=1, retry_count=0, timeout=0, **kwargs):
+        if not self.has_login(appid):
+            yield self.login(appid)
+        res = yield fn(appid, **kwargs)
+        if res.get('err_code') != 0 and retry_count < retry_limit:
+            if timeout != 0:
+                yield tornado.gen.Task(tornado.ioloop.IOLoop.instance().add_timeout, time.time() + timeout)
+            self.clear_login(appid)
+            res = yield self._mock_api_call(fn, appid, retry_limit, retry_count + 1, **kwargs)
+        raise tornado.gen.Return(res)
+
     def has_login(self, appid):
         return appid in self.tokens and appid in self.cookies and self.cookies[appid].get('slave_sid') and self.cookies[
             appid].get('data_ticket') and time.time() - self.tokens[appid].get('last_login', 0) < 60 * 20
@@ -250,9 +263,9 @@ class MockBrowser(object):
                 'f': 'json'})
         except tornado.httpclient.HTTPError:
             logging.warning('login failed: %s', appid)
-            raise tornado.gen.Return({'err_code': 1001})
+            raise tornado.gen.Return({'err_code': 7000})
         result = _parse_mp_resp(resp)
-        if result.get('err_code', 1) != 0:
+        if result['err_code'] != 0:
             logging.warning('login failed: %s %s', appid, result)
             raise tornado.gen.Return(result)
         result_data = result.get('data')
@@ -268,12 +281,12 @@ class MockBrowser(object):
 
     @tornado.gen.coroutine
     def _send_single_message(self, appid, fakeid, content):
-        post_url = url.mp_singlesend + '?' + urllib.urlencode({
+        post_url = http.build_url(url.mp_singlesend, {
             't': 'ajax-response',
             'f': 'json',
             'token': self.tokens[appid]['token'],
             'lang': 'zh_CN'})
-        referer_url = url.mp_singlesend_page + '?' + urllib.urlencode({
+        referer_url = http.build_url(url.mp_singlesend_page, {
             'tofakeid': fakeid,
             't': 'message/send',
             'action': 'index',
@@ -291,12 +304,12 @@ class MockBrowser(object):
                 'random': random.random()
             }, referer=referer_url)
         except tornado.httpclient.HTTPError:
-            raise tornado.gen.Return({'err_code': 1001})
+            raise tornado.gen.Return({'err_code': 7000})
         raise tornado.gen.Return(_parse_mp_resp(resp))
 
     @tornado.gen.coroutine
     def _find_user(self, appid, timestamp, mtype, content, count=50, offset=0):
-        referer_url = url.mp_home + '?' + urllib.urlencode({
+        referer_url = http.build_url(url.mp_home, {
             't': 'home/index',
             'token': self.tokens[appid]['token'],
             'lang': 'zh_CN'})
@@ -309,14 +322,12 @@ class MockBrowser(object):
                 'token': self.tokens[appid]['token']
             }, referer=referer_url)
         except tornado.httpclient.HTTPError:
-            raise tornado.gen.Return({'err_code': 1001})
+            raise tornado.gen.Return({'err_code': 7000})
         if resp.code != 200:
-            raise tornado.gen.Return({'err_code': 1001})
-
-        raw = BeautifulSoup(resp.body)
+            raise tornado.gen.Return({'err_code': 7000})
         users = None
         try:
-            ts = raw.find_all('script', {'type': 'text/javascript', 'src': ''})
+            ts = BeautifulSoup(resp.body).find_all('script', {'type': 'text/javascript', 'src': ''})
             for t in ts:
                 te = t.text
                 if te.strip(' \t\r\n').startswith('wx.cgiData'):
@@ -324,7 +335,6 @@ class MockBrowser(object):
                     break
         except (ValueError, IndexError):
             pass
-
         if not users:
             logging.warning('fail to catch user list: %s', appid)
             raise tornado.gen.Return({'err_code': 7101})
@@ -340,12 +350,12 @@ class MockBrowser(object):
 
     @tornado.gen.coroutine
     def _get_contact_info(self, appid, fakeid, msg_id):
-        post_url = url.mp_contact_info + '?' + urllib.urlencode({
+        post_url = http.build_url(url.mp_contact_info, {
             't': 'ajax-getcontactinfo',
             'fakeid': fakeid,
             'msg_id': msg_id,
             'lang': 'zh_CN'})
-        referer_url = url.mp_message + '?' + urllib.urlencode({
+        referer_url = http.build_url(url.mp_message, {
             't': 'message/list',
             'count': 30,
             'offset': 0,
@@ -361,39 +371,115 @@ class MockBrowser(object):
                 'random': random.random()
             }, referer=referer_url)
         except tornado.httpclient.HTTPError:
-            raise tornado.gen.Return({'err_code': 1001})
+            raise tornado.gen.Return({'err_code': 7000})
         raise tornado.gen.Return(_parse_mp_resp(resp))
 
-    # TODO: change this to common dynamic function
     @tornado.gen.coroutine
-    def send_single_message(self, appid, fakeid, content, retry_limit=1, retry_count=0):
-        if not self.has_login(appid):
-            yield self.login(appid)
-        res = yield self._send_single_message(appid, fakeid, content)
-        if res.get('err_code', 1) != 0 and retry_count < retry_limit:
-            self.clear_login(appid)
-            res = yield self.send_single_message(appid, fakeid, content, retry_limit, retry_count + 1)
+    def _get_ticket(self, appid):
+        referer = http.build_url(url.mp_appmsg, {
+            'begin': 0,
+            'count': 10,
+            't': 'media/appmsg_list',
+            'token': self.tokens[appid]['token'],
+            'type': '10',
+            'action': 'list',
+            'lang': 'zh_CN'})
+        try:
+            resp = yield self._get(appid, url.mp_appmsg, {
+                't': 'media/appmsg_edit',
+                'action': 'edit',
+                'type': '10',
+                'isMul': 0,
+                'isNew': 1,
+                'lang': 'zh_CN',
+                'token': self.tokens[appid]['token']
+            }, referer=referer)
+        except tornado.httpclient.HTTPError:
+            raise tornado.gen.Return({'err_code': 7000})
+        if resp.code != 200:
+            raise tornado.gen.Return({'err_code': 7000})
+        ticket = None
+        try:
+            ts = BeautifulSoup(resp.body).find_all('script', {'type': 'text/javascript', 'src': ''})
+            for t in ts:
+                if t.text.strip(' \t\r\n').startswith('window.wx'):
+                    i = t.text.find('ticket:\"')
+                    if i != -1:
+                        ticket = t.text[i + 8:i + 48]
+                        break
+        except (ValueError, IndexError):
+            pass
+        if not ticket:
+            logging.warning('get_ticket failed: %s', appid)
+            raise tornado.gen.Return({'err_code': 7103})
+        else:
+            logging.info('get_ticket success: %s - %s', appid, ticket)
+            raise tornado.gen.Return({'err_code': 0, 'data': {'ticket': ticket}})
+
+    @tornado.gen.coroutine
+    def _upload_image(self, appid, ticket, picurl, filename, width=0):
+        img = Image.open(io.BytesIO(urllib.urlopen(picurl).read()))
+        w, h = img.size
+        nw = min(width, w) if width != 0 else w
+        nh = int(float(nw * h) / w)
+        tmp_file = '/tmp/' + security.nonce_str()
+        fd = open(tmp_file, 'w')
+        img.resize((nw, nh)).convert('RGB').save(fd, 'JPEG', quality=85)
+        fd.close()
+        fd = open(tmp_file, 'rb')
+        post_url = http.build_url(url.mp_upload, {
+            'ticket_id': 'sevengram',
+            'ticket': ticket,
+            'f': 'json',
+            'token': self.tokens[appid]['token'],
+            'lang': 'zh_CN',
+            'writetype': 'doublewrite',
+            'group_id': 1,
+            'action': 'upload_material'})
+        referer = http.build_url(url.mp_appmsg, {
+            't': 'media/appmsg_edit',
+            'action': 'edit',
+            'type': '10',
+            'isMul': 0,
+            'isNew': 1,
+            'lang': 'zh_CN',
+            'token': self.tokens[appid]['token']})
+        content_type, data = http.encode_multipart_formdata(
+            fields=[('Filename', filename), ('folder', '/cgi-bin/uploads'), ('Upload', 'Submit Query')],
+            files=[('file', filename, fd.read())])
+        fd.close()
+        os.remove(tmp_file)
+        try:
+            resp = yield self._post_data(appid, post_url, data, content_type, referer=referer)
+        except tornado.httpclient.HTTPError:
+            raise tornado.gen.Return({'err_code': 7000})
+        raise tornado.gen.Return(_parse_mp_resp(resp))
+
+    @tornado.gen.coroutine
+    def send_single_message(self, appid, fakeid, content):
+        res = yield self._mock_api_call(self._send_single_message, appid, fakeid=fakeid, content=content)
         raise tornado.gen.Return(res)
 
     @tornado.gen.coroutine
-    def find_user(self, appid, timestamp, mtype, content, retry_limit=2, retry_count=0):
-        if not self.has_login(appid):
-            yield self.login(appid)
-        res = yield self._find_user(appid, timestamp, mtype, content)
-        if res.get('err_code', 1) != 0 and retry_count < retry_limit:
-            yield tornado.gen.Task(tornado.ioloop.IOLoop.instance().add_timeout, time.time() + 10)
-            self.clear_login(appid)
-            res = yield self.find_user(appid, timestamp, mtype, content, retry_limit, retry_count + 1)
+    def find_user(self, appid, timestamp, mtype, content):
+        res = yield self._mock_api_call(self._find_user, appid, timestamp=timestamp, mtype=mtype, content=content,
+                                        retry_limit=2, timeout=10)
         raise tornado.gen.Return(res)
 
     @tornado.gen.coroutine
-    def get_contact_info(self, appid, fakeid, msg_id, retry_limit=1, retry_count=0):
-        if not self.has_login(appid):
-            yield self.login(appid)
-        res = yield self._get_contact_info(appid, fakeid, msg_id)
-        if res.get('err_code', 1) != 0 and retry_count < retry_limit:
-            self.clear_login(appid)
-            res = yield self.get_contact_info(appid, fakeid, msg_id, retry_limit, retry_count + 1)
+    def get_contact_info(self, appid, fakeid, msg_id):
+        res = yield self._mock_api_call(self._get_contact_info, appid, fakeid=fakeid, msg_id=msg_id)
+        raise tornado.gen.Return(res)
+
+    @tornado.gen.coroutine
+    def get_ticket(self, appid):
+        res = yield self._mock_api_call(self._get_ticket, appid)
+        raise tornado.gen.Return(res)
+
+    @tornado.gen.coroutine
+    def upload_image(self, appid, ticket, picurl, filename, width=0):
+        res = yield self._mock_api_call(self._upload_image, appid, ticket=ticket, picurl=picurl, filename=filename,
+                                        width=width)
         raise tornado.gen.Return(res)
 
 
@@ -439,53 +525,6 @@ mock_browser = MockBrowser()
 #         raise tornado.gen.Return({'err': 0, 'msg': seq})
 #
 #     @tornado.gen.coroutine
-#     def get_ticket(self):
-#         referer = appmsg_url + '?' + urllib.urlencode({
-#             'begin': 0,
-#             'count': 10,
-#             't': 'media/appmsg_list',
-#             'token': self.token,
-#             'type': '10',
-#             'action': 'list',
-#             'lang': 'zh_CN'})
-#         result = yield self.get_request(appmsg_url, {
-#             't': 'media/appmsg_edit',
-#             'action': 'edit',
-#             'type': '10',
-#             'isMul': 0,
-#             'isNew': 1,
-#             'lang': 'zh_CN',
-#             'token': self.token
-#         }, referer=referer)
-#         ticket = None
-#         raw = BeautifulSoup(result)
-#         try:
-#             ts = raw.find_all('script', {'type': 'text/javascript', 'src': ''})
-#             for t in ts:
-#                 if t.text.strip(' \t\r\n').startswith('window.wx'):
-#                     i = t.text.find('ticket:')
-#                     ticket = t.text[i + 8:i + 48]
-#                     break
-#         except (ValueError, IndexError):
-#             ticket = None
-#
-#         if not ticket:
-#             try:
-#                 if raw.find('div', {'class': 'msg_content'}).text.strip().startswith(u'\u767b'):
-#                     print 'get_ticket failed: login expired'
-#                     sys.stdout.flush()
-#                     raise tornado.gen.Return({'err': 6, 'msg': 'login expired'})
-#             except AttributeError:
-#                 pass
-#             print 'get_ticket failed'
-#             sys.stdout.flush()
-#             raise tornado.gen.Return({'err': 7, 'msg': 'fail to get ticket'})
-#
-#         print 'get_ticket success: ', ticket
-#         sys.stdout.flush()
-#         raise tornado.gen.Return({'err': 0, 'msg': ticket})
-#
-#     @tornado.gen.coroutine
 #     def get_lastest_material(self, count, title):
 #         referer = home_url + '?' + urllib.urlencode({
 #             't': 'home/index',
@@ -529,39 +568,7 @@ mock_browser = MockBrowser()
 #         sys.stdout.flush()
 #         raise tornado.gen.Return({'err': 0, 'msg': itemid})
 #
-#     @tornado.gen.coroutine
-#     def upload_image(self, ticket, filename):
-#         url = upload_url + '?' + urllib.urlencode({
-#             'ticket_id': 'sevengram',
-#             'ticket': ticket,
-#             'f': 'json',
-#             'token': self.token,
-#             'lang': 'zh_CN',
-#             'action': 'upload_material'})
-#         referer = appmsg_url + '?' + urllib.urlencode({
-#             't': 'media/appmsg_edit',
-#             'action': 'edit',
-#             'type': '10',
-#             'isMul': 0,
-#             'isNew': 1,
-#             'lang': 'zh_CN',
-#             'token': self.token})
-#         content_type, data = encode_multipart_formdata(
-#             fields=[('Filename', filename.split('/')[-1]), (
-#                 'folder', '/cgi-bin/uploads'), ('Upload', 'Submit Query')],
-#             files=[('file', filename, open(filename, 'rb').read())])
-#         result = yield self.post_formdata(url, content_type, data, referer=referer)
-#         print 'upload_image response:', result
-#         sys.stdout.flush()
-#         try:
-#             if result['base_resp']['ret'] == -3:
-#                 raise tornado.gen.Return({'err': 6, 'msg': 'login expired'})
-#             elif result['base_resp']['ret'] == 0:
-#                 raise tornado.gen.Return({'err': 0, 'msg': result['content']})
-#             else:
-#                 raise tornado.gen.Return({'err': 5, 'msg': result['base_resp']['err_msg']})
-#         except (KeyError, AttributeError, TypeError):
-#             raise tornado.gen.Return({'err': 5, 'msg': 'fail to post image'})
+
 #
 #     @tornado.gen.coroutine
 #     def save_material(self, title, content, digest, author, fileid, sourceurl):
