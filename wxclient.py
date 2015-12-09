@@ -50,13 +50,22 @@ def _parse_mp_resp(resp):
     if resp.code != 200:
         return {'err_code': 7000}
     resp_data = json.loads(resp.body)
+    logging.info('mp response:%s', resp_data)
     try:
-        if resp_data and resp_data['base_resp']['ret'] == -3:
-            return {'err_code': 7001}
-        elif resp_data and resp_data['base_resp']['ret'] == 0:
-            return {'err_code': 0, 'data': resp_data}
+        if resp_data:
+            ret = resp_data['base_resp']['ret']
+            if ret == -3:
+                return {'err_code': 7001}
+            elif ret == 64004:
+                return {'err_code': 7201}
+            elif ret in {0, 154011, 154009}:
+                del resp_data['base_resp']
+                return {'err_code': 0, 'data': resp_data}
+            else:
+                logging.error('unknow mp error code: %s', resp_data['base_resp']['ret'])
+                return {'err_code': 7000}
         else:
-            return {'err_code': 7002}
+            return {'err_code': 9003}
     except (KeyError, AttributeError, TypeError):
         return {'err_code': 9003}
 
@@ -402,11 +411,12 @@ class MockBrowser(object):
         try:
             ts = BeautifulSoup(resp.body).find_all('script', {'type': 'text/javascript', 'src': ''})
             for t in ts:
-                if t.text.strip(' \t\r\n').startswith('window.wx'):
-                    i = t.text.find('ticket:\"')
-                    if i != -1:
-                        ticket = t.text[i + 8:i + 48]
-                        break
+                i = t.text.find('ticket:\"')
+                if i != -1:
+                    s = t.text.find('\"', i) + 1
+                    e = t.text.find('\"', s)
+                    ticket = t.text[s:e]
+                    break
         except (ValueError, IndexError):
             pass
         if not ticket:
@@ -427,6 +437,7 @@ class MockBrowser(object):
         img.resize((nw, nh)).convert('RGB').save(fd, 'JPEG', quality=85)
         fd.close()
         fd = open(tmp_file, 'rb')
+        filename = filename.encode('utf8')
         post_url = http.build_url(url.mp_upload, {
             'ticket_id': 'sevengram',
             'ticket': ticket,
@@ -451,6 +462,139 @@ class MockBrowser(object):
         os.remove(tmp_file)
         try:
             resp = yield self._post_data(appid, post_url, data, content_type, referer=referer)
+        except tornado.httpclient.HTTPError:
+            raise tornado.gen.Return({'err_code': 7000})
+        raise tornado.gen.Return(_parse_mp_resp(resp))
+
+    @tornado.gen.coroutine
+    def _save_material(self, appid, title, content, digest, author, fileid, sourceurl):
+        post_url = http.build_url(url.mp_save_material, {
+            't': 'ajax-response',
+            'sub': 'create',
+            'type': '10',
+            'token': self.tokens[appid]['token'],
+            'lang': 'zh_CN'})
+        referer = http.build_url(url.mp_appmsg, {
+            't': 'media/appmsg_edit',
+            'action': 'edit',
+            'type': '10',
+            'isMul': 0,
+            'isNew': 1,
+            'lang': 'zh_CN',
+            'token': self.tokens[appid]['token']})
+        try:
+            resp = yield self._post_form(appid, post_url, {
+                'token': self.tokens[appid]['token'],
+                'lang': 'zh_CN',
+                'f': 'json',
+                'ajax': 1,
+                'type': 1,
+                'content0': content.encode('utf-8'),
+                'count': 1,
+                'random': random.random(),
+                'AppMsgId': '',
+                'vid': '',
+                'title0': title.encode('utf-8'),
+                'digest0': digest.encode('utf-8'),
+                'author0': author.encode('utf-8'),
+                'fileid0': fileid,
+                'show_cover_pic0': 1,
+                'sourceurl0': sourceurl
+            }, referer=referer)
+        except tornado.httpclient.HTTPError:
+            raise tornado.gen.Return({'err_code': 7000})
+        raise tornado.gen.Return(_parse_mp_resp(resp))
+
+    @tornado.gen.coroutine
+    def _get_operation_seq(self, appid):
+        referer = http.build_url(url.mp_home, {
+            't': 'home/index',
+            'token': self.tokens[appid]['token'],
+            'lang': 'zh_CN'})
+        try:
+            resp = yield self._get(appid, url.mp_multisend_page, {
+                't': 'mass/send',
+                'lang': 'zh_CN',
+                'token': self.tokens[appid]['token'],
+            }, referer=referer)
+        except tornado.httpclient.HTTPError:
+            raise tornado.gen.Return({'err_code': 7000})
+        if resp.code != 200:
+            raise tornado.gen.Return({'err_code': 7000})
+        seq = None
+        try:
+            ts = BeautifulSoup(resp.body).find_all('script', {'type': 'text/javascript', 'src': ''})
+            for t in ts:
+                i = t.text.find('operation_seq:')
+                if i != -1:
+                    s = t.text.find('\"', i) + 1
+                    e = t.text.find('\"', s)
+                    seq = t.text[s:e]
+                    break
+        except (ValueError, IndexError):
+            pass
+        if not seq:
+            logging.warning('get_seq failed: %s', appid)
+            raise tornado.gen.Return({'err_code': 7104})
+        else:
+            logging.info('get_seq success: %s - %s', appid, seq)
+            raise tornado.gen.Return({'err_code': 0, 'data': {'seq': seq}})
+
+    @tornado.gen.coroutine
+    def _presend_multi_message(self, appid, appmsgid, times):
+        post_url = http.build_url(url.mp_multisend, {
+            'action': 'get_appmsg_copyright_stat',
+            'token': self.tokens[appid]['token'],
+            'lang': 'zh_CN'})
+        referer = http.build_url(url.mp_multisend_page, {
+            't': 'mass/send',
+            'lang': 'zh_CN',
+            'token': self.tokens[appid]['token']})
+        try:
+            resp = yield self._post_form(appid, post_url, {
+                'token': self.tokens[appid]['token'],
+                'lang': 'zh_CN',
+                'f': 'json',
+                'ajax': 1,
+                'type': 10,
+                'first_check': times,
+                'random': random.random(),
+                'appmsgid': appmsgid
+            }, referer=referer)
+        except tornado.httpclient.HTTPError:
+            raise tornado.gen.Return({'err_code': 7000})
+        raise tornado.gen.Return(_parse_mp_resp(resp))
+
+    @tornado.gen.coroutine
+    def _send_multi_message(self, appid, appmsgid, operation_seq, groupid):
+        post_url = http.build_url(url.mp_multisend, {
+            't': 'ajax-response',
+            'token': self.tokens[appid]['token'],
+            'lang': 'zh_CN'})
+        referer = http.build_url(url.mp_multisend_page, {
+            't': 'mass/send',
+            'lang': 'zh_CN',
+            'token': self.tokens[appid]['token']})
+        try:
+            resp = yield self._post_form(appid, post_url, {
+                'token': self.tokens[appid]['token'],
+                'lang': 'zh_CN',
+                'f': 'json',
+                'ajax': 1,
+                'type': 10,
+                'synctxweibo': 1,
+                'cardlimit': 1,
+                'sex': 0,
+                'random': random.random(),
+                'groupid': groupid,
+                'appmsgid': appmsgid,
+                'operation_seq': operation_seq,
+                'country': '',
+                'province': '',
+                'city': '',
+                'imgcode': '',
+                'direct_send': 1
+            }, referer=referer)
         except tornado.httpclient.HTTPError:
             raise tornado.gen.Return({'err_code': 7000})
         raise tornado.gen.Return(_parse_mp_resp(resp))
@@ -482,173 +626,27 @@ class MockBrowser(object):
                                         width=width)
         raise tornado.gen.Return(res)
 
+    @tornado.gen.coroutine
+    def save_material(self, appid, title, content, digest, author, fileid, sourceurl):
+        res = yield self._mock_api_call(self._save_material, appid=appid, title=title, content=content, digest=digest,
+                                        author=author, fileid=fileid, sourceurl=sourceurl)
+        raise tornado.gen.Return(res)
+
+    @tornado.gen.coroutine
+    def get_operation_seq(self, appid):
+        res = yield self._mock_api_call(self._get_operation_seq, appid)
+        raise tornado.gen.Return(res)
+
+    @tornado.gen.coroutine
+    def presend_multi_message(self, appid, appmsgid, times):
+        res = yield self._mock_api_call(self._presend_multi_message, appid, appmsgid=appmsgid, times=times)
+        raise tornado.gen.Return(res)
+
+    @tornado.gen.coroutine
+    def send_multi_message(self, appid, appmsgid, operation_seq, groupid):
+        res = yield self._mock_api_call(self._send_multi_message, appid, appmsgid=appmsgid, operation_seq=operation_seq,
+                                        groupid=groupid)
+        raise tornado.gen.Return(res)
+
 
 mock_browser = MockBrowser()
-
-# TODO: add multisend
-# class WechatConnector(object):
-#
-#     @tornado.gen.coroutine
-#     def get_operation_seq(self):
-#         referer = home_url + '?' + urllib.urlencode({
-#             't': 'home/index',
-#             'token': self.token,
-#             'lang': 'zh_CN'})
-#         result = yield self.get_request(multisend_page_url, {
-#             't': 'mass/send',
-#             'lang': 'zh_CN',
-#             'token': self.token
-#         }, referer=referer)
-#         raw = BeautifulSoup(result)
-#         try:
-#             t = raw.find_all(
-#                 'script', {'type': 'text/javascript', 'src': ''})[-2].text
-#             s = t[t.find('operation_seq'):].split(',')[0]
-#             seq = s[s.index('\"') + 1:s.rindex('\"')]
-#         except (ValueError, IndexError):
-#             seq = None
-#
-#         if not seq:
-#             try:
-#                 if raw.find('div', {'class': 'msg_content'}).text.strip().startswith(u'\u767b'):
-#                     print 'get_operation_seq failed: login expired'
-#                     sys.stdout.flush()
-#                     raise tornado.gen.Return({'err': 6, 'msg': 'login expired'})
-#             except AttributeError:
-#                 pass
-#             print 'get_operation_seq failed'
-#             sys.stdout.flush()
-#             raise tornado.gen.Return({'err': 10, 'msg': 'fail to get operation_seq'})
-#
-#         print 'get_operation_seq success: ', seq
-#         sys.stdout.flush()
-#         raise tornado.gen.Return({'err': 0, 'msg': seq})
-#
-#     @tornado.gen.coroutine
-#     def get_lastest_material(self, count, title):
-#         referer = home_url + '?' + urllib.urlencode({
-#             't': 'home/index',
-#             'token': self.token,
-#             'lang': 'zh_CN'})
-#         result = yield self.get_request(appmsg_url, {
-#             'begin': 0,
-#             'count': count,
-#             't': 'media/appmsg_list',
-#             'token': self.token,
-#             'type': '10',
-#             'action': 'list',
-#             'lang': 'zh_CN'
-#         }, referer=referer)
-#         raw = BeautifulSoup(result)
-#         itemid = None
-#         try:
-#             t = raw.find_all(
-#                 'script', {'type': 'text/javascript', 'src': ''})[-2].text
-#             items = json.loads(t[t.index('{'):t.rindex('}') + 1], encoding='utf-8')
-#             for item in items['item']:
-#                 if title == item['title']:
-#                     itemid = item['app_id']
-#                     break
-#         except (ValueError, IndexError):
-#             pass
-#
-#         if not itemid:
-#             try:
-#                 if raw.find('div', {'class': 'msg_content'}).text.strip().startswith(u'\u767b'):
-#                     print 'get_lastest_material failed: login expired'
-#                     sys.stdout.flush()
-#                     raise tornado.gen.Return({'err': 6, 'msg': 'login expired'})
-#             except AttributeError:
-#                 pass
-#             print 'get_lastest_material failed'
-#             sys.stdout.flush()
-#             raise tornado.gen.Return({'err': 9, 'msg': 'fail to match lastest material'})
-#
-#         print 'get_lastest_material success: ', itemid
-#         sys.stdout.flush()
-#         raise tornado.gen.Return({'err': 0, 'msg': itemid})
-#
-
-#
-#     @tornado.gen.coroutine
-#     def save_material(self, title, content, digest, author, fileid, sourceurl):
-#         url = save_material_url + '?' + urllib.urlencode({
-#             't': 'ajax-response',
-#             'sub': 'create',
-#             'type': '10',
-#             'token': self.token,
-#             'lang': 'zh_CN'})
-#         referer = appmsg_url + '?' + urllib.urlencode({
-#             't': 'media/appmsg_edit',
-#             'action': 'edit',
-#             'type': '10',
-#             'isMul': 0,
-#             'isNew': 1,
-#             'lang': 'zh_CN',
-#             'token': self.token})
-#         result = yield self.post_data(url, {
-#             'token': self.token,
-#             'lang': 'zh_CN',
-#             'f': 'json',
-#             'ajax': 1,
-#             'type': 1,
-#             'content0': content.encode('utf-8'),
-#             'count': 1,
-#             'random': random.random(),
-#             'AppMsgId': '',
-#             'vid': '',
-#             'title0': title.encode('utf-8'),
-#             'digest0': digest.encode('utf-8'),
-#             'author0': author.encode('utf-8'),
-#             'fileid0': fileid,
-#             'show_cover_pic0': 1,
-#             'sourceurl0': sourceurl
-#         }, referer=referer, accept='text/html, */*; q=0.01')
-#         print 'save_material response:', result
-#         sys.stdout.flush()
-#         if result and result.get('ret') == '0':
-#             raise tornado.gen.Return({'err': 0, 'msg': 'ok'})
-#         elif result:
-#             raise tornado.gen.Return({'err': 8, 'msg': result.get('msg', 'fail to save material')})
-#         else:
-#             raise tornado.gen.Return({'err': 8, 'msg': 'fail to save material'})
-#
-#     @tornado.gen.coroutine
-#     def multi_send_message(self, operation_seq, appmsgid, groupid):
-#         url = multisend_url + '?' + urllib.urlencode({
-#             't': 'ajax-response',
-#             'token': self.token,
-#             'lang': 'zh_CN'})
-#         referer = multisend_page_url + '?' + urllib.urlencode({
-#             't': 'mass/send',
-#             'lang': 'zh_CN',
-#             'token': self.token})
-#         result = yield self.post_data(url, {
-#             'token': self.token,
-#             'lang': 'zh_CN',
-#             'f': 'json',
-#             'ajax': 1,
-#             'type': 10,
-#             'synctxweibo': 1,
-#             'cardlimit': 1,
-#             'sex': 0,
-#             'random': random.random(),
-#             'groupid': groupid,
-#             'appmsgid': appmsgid,
-#             'operation_seq': operation_seq,
-#             'country': '',
-#             'province': '',
-#             'city': '',
-#             'imgcode': ''
-#         }, referer=referer)
-#         print 'multi_send_message response:', result
-#         sys.stdout.flush()
-#         if result and result.get('ret') == '-20000':
-#             raise tornado.gen.Return({'err': 6, 'msg': 'login expired'})
-#         elif result and result.get('ret') == '64004':
-#             raise tornado.gen.Return(
-#                 {'err': 11, 'msg': result.get('msg', 'fail to send multi message')})
-#         elif result and result.get('ret') == '0':
-#             raise tornado.gen.Return({'err': 0, 'msg': 'ok'})
-#         else:
-#             raise tornado.gen.Return({'err': 12, 'msg': 'fail to send multi message'})
