@@ -467,8 +467,8 @@ class MockBrowser(object):
         raise tornado.gen.Return(_parse_mp_resp(resp))
 
     @tornado.gen.coroutine
-    def _save_material(self, appid, title, content, digest, author, fileid, sourceurl):
-        post_url = http.build_url(url.mp_save_material, {
+    def _save_news(self, appid, title, content, digest, author, fileid, sourceurl):
+        post_url = http.build_url(url.mp_save_news, {
             't': 'ajax-response',
             'sub': 'create',
             'type': '10',
@@ -539,6 +539,42 @@ class MockBrowser(object):
         else:
             logging.info('get_seq success: %s - %s', appid, seq)
             raise tornado.gen.Return({'err_code': 0, 'data': {'seq': seq}})
+
+    @tornado.gen.coroutine
+    def _get_latest_news(self, appid):
+        referer = http.build_url(url.mp_home, {
+            't': 'home/index',
+            'token': self.tokens[appid]['token'],
+            'lang': 'zh_CN'})
+        try:
+            resp = yield self._get(appid, url.mp_appmsg, {
+                'begin': 0,
+                'count': 1,
+                't': 'media/appmsg_list',
+                'token': self.tokens[appid]['token'],
+                'type': '10',
+                'action': 'list',
+                'lang': 'zh_CN'}, referer=referer)
+        except tornado.httpclient.HTTPError:
+            raise tornado.gen.Return({'err_code': 7000})
+        if resp.code != 200:
+            raise tornado.gen.Return({'err_code': 7000})
+        item = None
+        try:
+            ts = BeautifulSoup(resp.body).find_all('script', {'type': 'text/javascript', 'src': ''})
+            for t in ts:
+                te = t.text
+                if te.strip(' \t\r\n').startswith('wx.cgiData'):
+                    item = json.loads(te[te.index('{'):te.rindex('}') + 1], encoding='utf-8')['item'][0]
+                    break
+        except (ValueError, IndexError):
+            pass
+        if not item:
+            logging.warning('get_latest_news failed: %s', appid)
+            raise tornado.gen.Return({'err_code': 7105})
+        else:
+            logging.info('get_latest_news success: %s', item)
+            raise tornado.gen.Return({'err_code': 0, 'data': item})
 
     @tornado.gen.coroutine
     def _presend_multi_message(self, appid, appmsgid, times):
@@ -627,8 +663,8 @@ class MockBrowser(object):
         raise tornado.gen.Return(res)
 
     @tornado.gen.coroutine
-    def save_material(self, appid, title, content, digest, author, fileid, sourceurl):
-        res = yield self._mock_api_call(self._save_material, appid=appid, title=title, content=content, digest=digest,
+    def save_news(self, appid, title, content, digest, author, fileid, sourceurl):
+        res = yield self._mock_api_call(self._save_news, appid=appid, title=title, content=content, digest=digest,
                                         author=author, fileid=fileid, sourceurl=sourceurl)
         raise tornado.gen.Return(res)
 
@@ -648,5 +684,9 @@ class MockBrowser(object):
                                         groupid=groupid)
         raise tornado.gen.Return(res)
 
+    @tornado.gen.coroutine
+    def get_latest_news(self, appid):
+        res = yield self._mock_api_call(self._get_latest_news, appid)
+        raise tornado.gen.Return(res)
 
 mock_browser = MockBrowser()

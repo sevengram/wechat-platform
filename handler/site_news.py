@@ -19,19 +19,19 @@ class NewsHandler(SiteBaseHandler):
         resp = yield mock_browser.get_ticket(appid)
         if resp['err_code'] != 0:
             self.send_response(err_code=resp['err_code'], err_msg=resp.get('err_msg', ''))
-            return
+        else:
+            self.send_response()
         ticket = resp['data']['ticket']
-
         resp = yield mock_browser.upload_image(appid, ticket, picurl, picurl.split('/')[-1], width=640)
-        if resp['err_code'] != 0:
-            self.send_response(err_code=resp['err_code'], err_msg=resp.get('err_msg', ''))
-            return
-        fileid = resp['data']['content']
+        if resp['err_code'] == 0:
+            yield mock_browser.save_news(appid, title, content, digest, '', resp['data']['content'], source_url)
 
-        resp = yield mock_browser.save_material(appid, title, content, digest, '', fileid, source_url)
+    @tornado.gen.coroutine
+    def get(self, siteid, *args, **kwargs):
+        appid = self.get_argument('appid')
+
+        resp = yield mock_browser.get_latest_news(appid)
         if resp['err_code'] != 0:
             self.send_response(err_code=resp['err_code'], err_msg=resp.get('err_msg', ''))
         else:
-            self.send_response({
-                'appmsgid': resp['data']['appMsgId']
-            })
+            self.send_response(resp['data'])

@@ -37,7 +37,7 @@ mp_appmsg = mp_base + '/cgi-bin/appmsg'
 
 mp_upload = mp_base + '/cgi-bin/filetransfer'
 
-mp_save_material = mp_base + '/cgi-bin/operate_appmsg'
+mp_save_news = mp_base + '/cgi-bin/operate_appmsg'
 
 mp_message = mp_base + '/cgi-bin/message'
 

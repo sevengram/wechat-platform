@@ -27,6 +27,7 @@ err_map = defaultdict(lambda: ('FAIL', 'ERROR'), {
     7102: ('MOCK_FAKEID_NOT_FOUND', u'wechat模拟访问fakeid未找到'),
     7103: ('MOCK_TICKET_NOTFOUND', u'wechat模拟访问ticket未找到'),
     7104: ('MOCK_SEQ_NOTFOUND', u'wechat模拟访问operation_seq未找到'),
+    7105: ('MOCK_NEWS_NOTFOUND', u'wechat模拟访问news未找到'),
     7201: ('MOCK_MULTIMSG_LIMIT', u'wechat模拟访问群发超过上限'),
     8001: ('SIGNERROR', u'签名错误'),
     8002: ('NOSIGN', u'找不到授权签名'),
