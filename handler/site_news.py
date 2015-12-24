@@ -17,14 +17,15 @@ class NewsHandler(SiteBaseHandler):
         source_url = self.get_argument('source_url', '')
 
         resp = yield mock_browser.get_ticket(appid)
-        if resp['err_code'] != 0:
-            self.send_response(err_code=resp['err_code'], err_msg=resp.get('err_msg', ''))
-        else:
-            self.send_response()
-        ticket = resp['data']['ticket']
-        resp = yield mock_browser.upload_image(appid, ticket, picurl, picurl.split('/')[-1], width=640)
         if resp['err_code'] == 0:
-            yield mock_browser.save_news(appid, title, content, digest, '', resp['data']['content'], source_url)
+            self.send_response()
+            ticket = resp['data']['ticket']
+            resp = yield mock_browser.upload_image(appid, ticket, picurl, picurl.split('/')[-1], width=640)
+            if resp['err_code'] == 0:
+                fileid = resp['data']['content']
+                yield mock_browser.save_news(appid, title, content, digest, '', fileid, source_url)
+        else:
+            self.send_response(err_code=resp['err_code'], err_msg=resp.get('err_msg', ''))
 
     @tornado.gen.coroutine
     def get(self, siteid, *args, **kwargs):

@@ -566,6 +566,7 @@ class MockBrowser(object):
                 te = t.text
                 if te.strip(' \t\r\n').startswith('wx.cgiData'):
                     item = json.loads(te[te.index('{'):te.rindex('}') + 1], encoding='utf-8')['item'][0]
+                    del item['multi_item']
                     break
         except (ValueError, IndexError):
             pass
