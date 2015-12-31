@@ -246,7 +246,7 @@ class MockBrowser(object):
             if timeout != 0:
                 yield tornado.gen.Task(tornado.ioloop.IOLoop.instance().add_timeout, time.time() + timeout)
             self.clear_login(appid)
-            res = yield self._mock_api_call(fn, appid, retry_limit, retry_count + 1, **kwargs)
+            res = yield self._mock_api_call(fn, appid, retry_limit, retry_count + 1, timeout, **kwargs)
         raise tornado.gen.Return(res)
 
     def has_login(self, appid):
@@ -326,7 +326,6 @@ class MockBrowser(object):
             resp = yield self._get(appid, url.mp_message, {
                 't': 'message/list',
                 'count': count,
-                'offset': offset,
                 'day': 7,
                 'token': self.tokens[appid]['token']
             }, referer=referer_url)
@@ -335,26 +334,28 @@ class MockBrowser(object):
         if resp.code != 200:
             raise tornado.gen.Return({'err_code': 7000})
         users = None
-        try:
-            ts = BeautifulSoup(resp.body).find_all('script', {'type': 'text/javascript', 'src': ''})
-            for t in ts:
+        ts = BeautifulSoup(resp.body).find_all('script', {'type': 'text/javascript', 'src': ''})
+        for t in ts:
+            try:
                 te = t.text
                 if te.strip(' \t\r\n').startswith('wx.cgiData'):
-                    users = json.loads(te[te.index('['):te.rindex(']') + 1], encoding='utf-8')
+                    s = te.index('[', te.index('msg_item'))
+                    e = te.rindex(']', s, te.rindex('msg_item')) + 1
+                    users = json.loads(te[s:e], encoding='utf-8')
                     break
-        except (ValueError, IndexError):
-            pass
+            except (ValueError, IndexError):
+                pass
         if not users:
             logging.warning('fail to catch user list: %s', appid)
             raise tornado.gen.Return({'err_code': 7101})
-        for i in range(0, len(users) - 1):
-            if users[i]['date_time'] < timestamp:
+        for user in users:
+            if user['date_time'] < timestamp:
                 logging.warning('fail to find user: %s', appid)
                 raise tornado.gen.Return({'err_code': 7101})
-            elif check_same(timestamp, content, mtype, users[i]):
-                logging.warning('user found: %s', users[i])
-                raise tornado.gen.Return({'err_code': 0, 'data': users[i]})
-        res = yield self._find_user(appid, timestamp, mtype, content, count, count + offset - 1)
+            elif check_same(timestamp, content, mtype, user):
+                logging.warning('user found: %s', user)
+                raise tornado.gen.Return({'err_code': 0, 'data': user})
+        res = yield self._find_user(appid, timestamp, mtype, content, count, count + offset)
         raise tornado.gen.Return(res)
 
     @tornado.gen.coroutine
@@ -408,17 +409,17 @@ class MockBrowser(object):
         if resp.code != 200:
             raise tornado.gen.Return({'err_code': 7000})
         ticket = None
-        try:
-            ts = BeautifulSoup(resp.body).find_all('script', {'type': 'text/javascript', 'src': ''})
-            for t in ts:
-                i = t.text.find('ticket:\"')
-                if i != -1:
-                    s = t.text.find('\"', i) + 1
-                    e = t.text.find('\"', s)
-                    ticket = t.text[s:e]
-                    break
-        except (ValueError, IndexError):
-            pass
+        ts = BeautifulSoup(resp.body).find_all('script', {'type': 'text/javascript', 'src': ''})
+        for t in ts:
+            try:
+                te = t.text
+                i = te.index('ticket:\"')
+                s = te.index('\"', i) + 1
+                e = te.index('\"', s)
+                ticket = te[s:e]
+                break
+            except (ValueError, IndexError):
+                pass
         if not ticket:
             logging.warning('get_ticket failed: %s', appid)
             raise tornado.gen.Return({'err_code': 7103})
@@ -456,8 +457,10 @@ class MockBrowser(object):
             'lang': 'zh_CN',
             'token': self.tokens[appid]['token']})
         content_type, data = http.encode_multipart_formdata(
-            fields=[('Filename', filename), ('folder', '/cgi-bin/uploads'), ('Upload', 'Submit Query')],
-            files=[('file', filename, fd.read())])
+            fields={'Filename': filename,
+                    'folder': '/cgi-bin/uploads',
+                    'Upload': 'Submit Query'},
+            files=(filename, fd.read()))
         fd.close()
         os.remove(tmp_file)
         try:
@@ -522,17 +525,17 @@ class MockBrowser(object):
         if resp.code != 200:
             raise tornado.gen.Return({'err_code': 7000})
         seq = None
-        try:
-            ts = BeautifulSoup(resp.body).find_all('script', {'type': 'text/javascript', 'src': ''})
-            for t in ts:
-                i = t.text.find('operation_seq:')
-                if i != -1:
-                    s = t.text.find('\"', i) + 1
-                    e = t.text.find('\"', s)
-                    seq = t.text[s:e]
-                    break
-        except (ValueError, IndexError):
-            pass
+        ts = BeautifulSoup(resp.body).find_all('script', {'type': 'text/javascript', 'src': ''})
+        for t in ts:
+            try:
+                te = t.text
+                i = te.index('operation_seq:')
+                s = te.index('\"', i) + 1
+                e = te.index('\"', s)
+                seq = te[s:e]
+                break
+            except (ValueError, IndexError):
+                pass
         if not seq:
             logging.warning('get_seq failed: %s', appid)
             raise tornado.gen.Return({'err_code': 7104})
@@ -560,16 +563,16 @@ class MockBrowser(object):
         if resp.code != 200:
             raise tornado.gen.Return({'err_code': 7000})
         item = None
-        try:
-            ts = BeautifulSoup(resp.body).find_all('script', {'type': 'text/javascript', 'src': ''})
-            for t in ts:
+        ts = BeautifulSoup(resp.body).find_all('script', {'type': 'text/javascript', 'src': ''})
+        for t in ts:
+            try:
                 te = t.text
                 if te.strip(' \t\r\n').startswith('wx.cgiData'):
                     item = json.loads(te[te.index('{'):te.rindex('}') + 1], encoding='utf-8')['item'][0]
                     del item['multi_item']
                     break
-        except (ValueError, IndexError):
-            pass
+            except (ValueError, IndexError):
+                pass
         if not item:
             logging.warning('get_latest_news failed: %s', appid)
             raise tornado.gen.Return({'err_code': 7105})
@@ -643,8 +646,8 @@ class MockBrowser(object):
 
     @tornado.gen.coroutine
     def find_user(self, appid, timestamp, mtype, content):
-        res = yield self._mock_api_call(self._find_user, appid, timestamp=timestamp, mtype=mtype, content=content,
-                                        retry_limit=2, timeout=10)
+        res = yield self._mock_api_call(self._find_user, appid, retry_limit=2, timeout=10,
+                                        timestamp=timestamp, mtype=mtype, content=content)
         raise tornado.gen.Return(res)
 
     @tornado.gen.coroutine
@@ -689,5 +692,6 @@ class MockBrowser(object):
     def get_latest_news(self, appid):
         res = yield self._mock_api_call(self._get_latest_news, appid)
         raise tornado.gen.Return(res)
+
 
 mock_browser = MockBrowser()
