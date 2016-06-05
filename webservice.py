@@ -3,10 +3,10 @@
 
 import logging
 
-import tornado.web
 import tornado.httpserver
 import tornado.ioloop
 import tornado.options
+import tornado.web
 from tornado.options import define, options
 
 define('port', default=33600, help="run on the given port", type=int)

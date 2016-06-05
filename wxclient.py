@@ -91,7 +91,7 @@ def _get_access_token(appid, refresh=False):
     except tornado.httpclient.HTTPError:
         raise tornado.gen.Return({'err_code': 1001})
     result = _parse_wechat_resp(resp)
-    if resp['err_code'] != 0:
+    if result['err_code'] != 0:
         raise tornado.gen.Return(result)
     else:
         result_data = result.get('data')

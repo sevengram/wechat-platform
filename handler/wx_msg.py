@@ -127,7 +127,7 @@ class WechatMsgHandler(BaseHandler):
                 })
 
         # Add more user info
-        if (not user_info or not user_info.get('fakeid')) and not req_data.get('event_type'):
+        if not appinfo['is_verified'] and (not user_info or not user_info.get('fakeid')) and not req_data.get('event_type'):
             user_resp = yield wxclient.mock_browser.find_user(
                 appid=appid,
                 timestamp=long(req_data['msg_time']),
