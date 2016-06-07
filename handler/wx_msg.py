@@ -1,14 +1,15 @@
 # -*- coding:utf8 -*-
 
 import json
-import time
 import logging
+import time
 
 import tornado.gen
 import tornado.httpclient
 
 import wxclient
 from util import http, security, dtools
+from util.security import Prpcrypt
 from util.web import BaseHandler
 from wxstorage import wechat_storage
 
@@ -53,7 +54,6 @@ class WechatMsgHandler(BaseHandler):
     def initialize(self, sign_check=True):
         super(WechatMsgHandler, self).initialize(sign_check=sign_check)
         self.storage = wechat_storage
-        self.post_args = {}
 
     @tornado.gen.coroutine
     def prepare(self):
@@ -69,9 +69,18 @@ class WechatMsgHandler(BaseHandler):
 
     @tornado.gen.coroutine
     def post(self):
-        self.post_args = dtools.xml2dict(self.request.body)
+        logging.info(self.request.body)
+        post_args = dtools.xml2dict(self.request.body)
+        appinfo = self.storage.get_app_info(openid=post_args['ToUserName'])
+        # TODO: add appinfo check
+        appid = appinfo['appid']
+        if appinfo['is_encrypted']:
+            pc = Prpcrypt(appinfo['encoding_key'])
+            plain_xml = pc.decrypt(post_args['Encrypt'])
+            logging.info(plain_xml)
+            post_args = dtools.xml2dict(plain_xml)
         req_data = dtools.transfer(
-            self.post_args,
+            post_args,
             renames=[
                 ('FromUserName', 'openid'),
                 ('MsgType', 'msg_type'),
@@ -87,8 +96,6 @@ class WechatMsgHandler(BaseHandler):
             allow_empty=False
         )
         logging.info('message from tencent: %s', req_data)
-        appinfo = self.storage.get_app_info(openid=self.post_args['ToUserName'])
-        appid = appinfo['appid']
         req_data['appid'] = appid
         site_info = self.storage.get_site_info(appinfo['siteid'])
         security.add_sign(req_data, site_info['sitekey'])
@@ -106,8 +113,8 @@ class WechatMsgHandler(BaseHandler):
         try:
             resp_data = json.loads(resp.body)
             if resp_data.get('err_code') == 0:
-                self.send_response(build_response(from_id=self.post_args['ToUserName'],
-                                                  to_id=self.post_args['FromUserName'],
+                self.send_response(build_response(from_id=post_args['ToUserName'],
+                                                  to_id=post_args['FromUserName'],
                                                   data=resp_data.get('data')))
             else:
                 self.send_response(err_code=9003)
@@ -123,11 +130,13 @@ class WechatMsgHandler(BaseHandler):
             else:
                 self.storage.add_user_info({
                     'appid': appid,
-                    'openid': openid
+                    'openid': openid,
+                    'fakeid': openid
                 })
 
-        # Add more user info
-        if not appinfo['is_verified'] and (not user_info or not user_info.get('fakeid')) and not req_data.get('event_type'):
+        # Use mock_browser to get user info
+        if not appinfo['is_protected'] and (not user_info or not user_info.get('nickname')) and not req_data.get(
+                'event_type'):
             user_resp = yield wxclient.mock_browser.find_user(
                 appid=appid,
                 timestamp=long(req_data['msg_time']),

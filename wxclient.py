@@ -1,23 +1,23 @@
 # -*- coding: utf-8 -*-
 
 import Cookie
-import urllib
 import io
 import json
+import logging
+import os
 import random
 import time
-import os
-import logging
+import urllib
 import urlparse
 from PIL import Image
 
-from bs4 import BeautifulSoup
 import tornado.gen
 import tornado.httpclient
 import tornado.ioloop
+from bs4 import BeautifulSoup
 
-import url
 import errinfo
+import url
 from util import http, dtools, security
 from wxstorage import wechat_storage
 
@@ -156,6 +156,7 @@ def update_user_info(appid, openid):
                 'headimgurl',
                 'subscribe_time'
             ], allow_empty=False)
+        user_info['fakeid'] = user_info['openid']
         wechat_storage.add_user_info(user_info)
         raise tornado.gen.Return({'err_code': 0, 'data': user_info})
 

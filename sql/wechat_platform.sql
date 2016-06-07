@@ -46,11 +46,6 @@ CREATE TABLE `wechat_app_info` (
   KEY `IDX_WECHAT_APP_INFO_WECHAT_NO` (`wechat_no`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
-insert into `wechat_app_info`(`id`,`appid`,`appname`,`secret`,`wechat_no`,`openid`,`apptype`,`is_verified`,`is_merchant`,`fakeid`,`qrdecode`,`mp_username`,`mp_pwd`,`bizuin`,`data_bizuin`,`mch_id`,`apikey`,`siteid`,`ctime`,`status`) values
-(3,'wx50f1fdd1dddebf1e','彩象彩票','eca55557b39337d364814456a8f28e91','xiangyatou888','gh_c008a36d9e93','2','1','0','3082785204','YkxNVWXElzjorSE29xlw','1516354524@qq.com','5416d7cd6ef195a0f7622a9c56b55e84','3082785204','3078782002',null,null,'lottery','2015-01-22 17:35:13','1'),
-(4,'wx8cabe7121f5369a3','米嘟嘟','6066d7e2e03fbb351a9a4602f07a3a94','iMidudu','gh_e558d76a7783','2','1','1','3017206179','dUg1LQzEhFH7rUhO9x1n','meduo@meduo.com.cn','3bd17e86f8aaddc2f7168dfaae4c22fd','3017206179','3002205880','1230283802',null,'meduo','2015-02-05 21:46:24','1'),
-(5,'wxfc87c2547449c2c6','邻家天文馆','58dd710662bbd6b559374a234c67266e','sevengram','gh_d188e2888313','1','0','0','2391209664','FnUqMlzE2gGlrRhR9yAE','sevengram@163.com','cbe34b794cc95deb3e5b5d390efb74d7','2391209664','2393201154',null,null,'deepsky','2015-02-05 21:55:55','1');
-
 DROP TABLE IF EXISTS  `wechat_app_token`;
 CREATE TABLE `wechat_app_token` (
   `id` int(11) NOT NULL,
@@ -87,19 +82,13 @@ CREATE TABLE `wechat_user_info` (
   KEY `IDX_WECHAT_USER_INFO_FAKEID` (`fakeid`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
-insert into `wechat_user_info`(`uid`,`appid`,`openid`,`unionid`,`fakeid`,`nickname`,`subscribe`,`sex`,`city`,`province`,`country`,`lang`,`headimgurl`,`subscribe_time`,`ctime`) values
-('1','wx8cabe7121f5369a3','oo-nWs9iARHWVo1Y8uECVwWFGjyw','orKOtuEXjD-sYfLPwZvf0cxMm9vw',null,'fjx','1','1','杨浦','上海','中国','zh_CN','http://wx.qlogo.cn/mmopen/oj991s4Obibog8HEliaxTt0mqjm5j1vicWNMXibo3GcLbwZjXuJQpNjAaZXV0szcCYw4M31t7YeHJWg1Hp75Gmm1Mx6QLCYBF7Bo/0','1425114970','2015-02-09 00:52:02'),
-('3','wx8cabe7121f5369a3','oo-nWs3qHnggJojc3hnnc6b24iEY','orKOtuOH0pTFVfFzeKw30EgOeAt0',null,'zenk','1','1','','上海','中国','zh_CN','http://wx.qlogo.cn/mmopen/oj991s4ObibqN701ZozRqdnd2nksm8bsxC0NqvQEDQmVVLdoWJDXquq3H4eqs5sZicSN9WFwKrqk1hS6IxJNSkjw/0','1425025895','2015-02-09 11:08:29'),
-('4','wx8cabe7121f5369a3','oo-nWsyjl9NS-lFmA4hVa3wDExFQ','orKOtuFQ2WIbtFM3VC4NkjQK0G2U',null,'胡晓阳','1','1','西雅图','华盛顿','美国','en','http://wx.qlogo.cn/mmopen/8KTOLqTvvB4katVQQMj43x0oALMKmZnsYpwWTiaxH9eib1VxEgFASvPw69qianZkBA8ossAQTbhxgNFQfe4ffGXMdouzaNwhaXF/0','1423995434','2015-02-09 11:52:07'),
-('6','wx8cabe7121f5369a3','oo-nWs8BdPXDWSKODck-1TtlMa3c','orKOtuBXHKfbk45KmXKuOTx_8ah8',null,'大猫',null,'1','静安','上海','中国','zh_CN','http://wx.qlogo.cn/mmopen/PiajxSqBRaEJEe2nukapRSDWP9bKOlcBibIWhAIMVYLbOKeIJ2aA61zVmoalLqQMLbtniaQ8icGyLiaCfnqDfVpUiaQg/0',null,'2015-02-09 17:40:53'),
-('7','wx8cabe7121f5369a3','oo-nWs8z_1vP0gyZdbSC3QqzA_5o',null,null,'忆舒Kiki','1','2','普陀','上海','中国','zh_CN','http://wx.qlogo.cn/mmopen/PiajxSqBRaELDKMJVDeUAEO9xVLy1oAsiaN04SzxwoP5RcYIXyE2sd5ubcM1hh6LAM80uL1p9uiaJT074Muc8raww/0','1423796114','2015-02-13 10:55:15'),
-('8','wx8cabe7121f5369a3','oo-nWs25aPLgc5pI0iN6SNuQLFN4',null,null,'查王平','1','1','浦东新区','上海','中国','zh_CN','http://wx.qlogo.cn/mmopen/LPLYlyQ5GApvpH9lkZMSMISyUoic9YyGwS6P9iaWaYUr6l69BLAkRibbnYDMElia8mV2sQNcQzg0Nrqmlv3LBCGAjnEsJZwY55Vc/0','1423796201','2015-02-13 10:56:41'),
-('9','wx8cabe7121f5369a3','oo-nWs3meUO4Bu_zEWKoZYvpcr2g',null,null,'张波','1','1','伯尼港','塔斯马尼亚','澳大利亚','zh_CN','http://wx.qlogo.cn/mmopen/8KTOLqTvvB6ReDPOF2JzANOEreHwb0eMf3Zn3cGC2AEL8UU1c2RG7a2OYe1jSsTUAfzHU3CTklpt4vWqXTrVphCeFbnMI5eD/0','1423821115','2015-02-13 17:51:56'),
-('10','wx8cabe7121f5369a3','oo-nWs7-AJqOMZfmX_K2dL6ayHwE','orKOtuDlExEan8GeYSD3gPr2GgvI',null,'',null,'2','','上海','中国','zh_CN','http://wx.qlogo.cn/mmopen/ajNVdqHZLLDQiaHunG9Tj6MUnmYKSz1gQLfrleXxEkXcb7NbII1CmJBIbrZDpUkZWhdot5g1VftKT5cuz6aZpnA/0',null,'2015-02-16 09:51:38'),
-('11','wx8cabe7121f5369a3','oo-nWs1PXLiFOdgmOI9A7PeB1qkI','orKOtuG-bZatmLdCClKP6uZv1loo',null,'安',null,'2','','上海','中国','zh_CN','http://wx.qlogo.cn/mmopen/ajNVdqHZLLAzRFuATOsdMdHP51xgLWQeAX8Gic0lS9KmN74oJM3YrHH1R4ibokVGjUMjUJnpIuyzGJthDpqyBh6w/0',null,'2015-02-16 11:22:32'),
-('12','wx8cabe7121f5369a3','oo-nWsxMW5LCDPiwccn8m8JMdFNM','orKOtuJaOnD7c0msUfM4bwR44z1c',null,'GARY WU',null,'1','静安','上海','中国','zh_CN','http://wx.qlogo.cn/mmopen/ajNVdqHZLLBc9n8N8GbysWCtGGN6zibTuQ7ZygDibm8gV2XvyBnwuR18QtETCxbSkzTxztjJbgw975rnu7hpnrMg/0',null,'2015-02-16 16:41:03'),
-('13','wx8cabe7121f5369a3','oo-nWswKZBcoPQ41Ci93KqYPD2yM','orKOtuA8O3qNvRDqvY8ye8F9lrBw',null,'徐小云',null,'2','静安','上海','中国','zh_CN','http://wx.qlogo.cn/mmopen/oj991s4Obibog8HEliaxTt0u6LI2aIqXjcMChy6atXHvibsAqme8ZbVustP08dUibGcEOM3U2WyIvg8FIu2CTyGH8E5cL8GsxErq/0',null,'2015-02-16 16:45:56'),
-('14','wx8cabe7121f5369a3','oo-nWs66L9j692wcHodYFq45YF0Y','orKOtuLeCKo0mqqoMLPSlR5J1XCI',null,'Faye Shen',null,'2','静安','上海','中国','zh_CN','http://wx.qlogo.cn/mmopen/ajNVdqHZLLBvSiao3Sbz9EP47icNNp7iaA8adibKYmic8NIiaYdAwpapLh6Wom1FZ3hnHvSiaNaKrxMj9gJjpgeaWsTGQ/0',null,'2015-02-18 02:10:38'),
-('15','wx8cabe7121f5369a3','oo-nWsweTfEAQhnswk8hvL87yXpc','orKOtuIGBk-YdIj2nkCx75criFKU',null,'采蘑菇的马里奥','1','2','西城','北京','中国','zh_CN','http://wx.qlogo.cn/mmopen/oj991s4Obibog8HEliaxTt0sqn4tubhysotUY6mVsLOeA8kna6wjP84GkKCrkdnvlAH0Q3NPPqTQVGQ5pOpICYbjsAI58Bq5lg/0','1424666315','2015-02-23 12:38:36');
+ALTER TABLE `wechat_app_info`
+    ADD `is_encrypted` tinyint(4) DEFAULT 0;
+
+ALTER TABLE `wechat_app_info`
+    ADD `is_protected` tinyint(4) DEFAULT 0;
+
+ALTER TABLE `wechat_app_info`
+    ADD `encoding_key` char(128) DEFAULT NULL;
 
 SET FOREIGN_KEY_CHECKS = 1;
