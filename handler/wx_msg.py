@@ -50,6 +50,11 @@ def build_response(from_id, to_id, data):
     return result
 
 
+def encrypt_data(data, crypter, appid):
+    plain_xml = dtools.dict2xml(data)
+    return {'Encrypt': crypter.encrypt(plain_xml, appid)}
+
+
 class WechatMsgHandler(BaseHandler):
     def initialize(self, sign_check=True):
         super(WechatMsgHandler, self).initialize(sign_check=sign_check)
@@ -69,16 +74,19 @@ class WechatMsgHandler(BaseHandler):
 
     @tornado.gen.coroutine
     def post(self):
-        logging.info(self.request.body)
         post_args = dtools.xml2dict(self.request.body)
         appinfo = self.storage.get_app_info(openid=post_args['ToUserName'])
         # TODO: add appinfo check
         appid = appinfo['appid']
+        crypter = None
         if appinfo['is_encrypted']:
-            pc = Prpcrypt(appinfo['encoding_key'])
-            plain_xml = pc.decrypt(post_args['Encrypt'])
-            logging.info(plain_xml)
-            post_args = dtools.xml2dict(plain_xml)
+            crypter = Prpcrypt(appinfo['encoding_key'])
+            plain_xml = crypter.decrypt(post_args['Encrypt'], appid)
+            if plain_xml:
+                post_args = dtools.xml2dict(plain_xml)
+            else:
+                # TODO: error
+                pass
         req_data = dtools.transfer(
             post_args,
             renames=[
@@ -113,9 +121,12 @@ class WechatMsgHandler(BaseHandler):
         try:
             resp_data = json.loads(resp.body)
             if resp_data.get('err_code') == 0:
-                self.send_response(build_response(from_id=post_args['ToUserName'],
-                                                  to_id=post_args['FromUserName'],
-                                                  data=resp_data.get('data')))
+                wx_resp = build_response(from_id=post_args['ToUserName'],
+                                         to_id=post_args['FromUserName'],
+                                         data=resp_data.get('data'))
+                if appinfo['is_encrypted']:
+                    wx_resp = encrypt_data(wx_resp, crypter, appid)
+                self.send_response(wx_resp)
             else:
                 self.send_response(err_code=9003)
         except ValueError:
