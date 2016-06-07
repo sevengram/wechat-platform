@@ -9,7 +9,7 @@ import tornado.httpclient
 
 import wxclient
 from util import http, security, dtools
-from util.security import Prpcrypt
+from util.security import Prpcrypt, add_sign_wechat
 from util.web import BaseHandler
 from wxstorage import wechat_storage
 
@@ -52,7 +52,15 @@ def build_response(from_id, to_id, data):
 
 def encrypt_data(data, crypter, appid):
     plain_xml = dtools.dict2xml(data)
-    return {'Encrypt': crypter.encrypt(plain_xml, appid)}
+    data = {'encrypt': crypter.encrypt(plain_xml, appid)}
+    add_sign_wechat(data, key='wechat_platform')
+    return dtools.transfer(
+        data,
+        renames=[
+            ('encrypt', 'Encrypt'),
+            ('sign', 'MsgSignature'),
+            ('timestamp', 'TimeStamp'),
+            ('nonce', 'Nonce')])
 
 
 class WechatMsgHandler(BaseHandler):
