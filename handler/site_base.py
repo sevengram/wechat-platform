@@ -19,7 +19,7 @@ class SiteBaseHandler(BaseHandler):
         if self.sign_check:
             parts = self.request.path.split('/')
             key = self.storage.get_site_info(parts[parts.index('sites') + 1], select_key='sitekey')
-            self.check_signature({k: v[0] for k, v in self.request.arguments.iteritems() if v},
+            self.check_signature({k: v[0] for k, v in self.request.arguments.items() if v},
                                  sign_key=key, method='md5')
 
     def head(self, *args, **kwargs):
@@ -47,7 +47,7 @@ class SiteBaseHandler(BaseHandler):
         if resp.code != 200:
             self.send_response(err_code=1001, err_msg='wechat %d' % resp.code)
             return None
-        resp_data = dtools.xml2dict(resp.body)
+        resp_data = dtools.xml2dict(resp.body.decode('utf8'))
         if resp_data['return_code'].lower() != 'success':
             self.send_response(err_code=1001, err_msg=resp_data.get('return_msg'))
             return None
@@ -64,7 +64,7 @@ class SiteBaseHandler(BaseHandler):
         if resp.code != 200:
             self.send_response(err_code=1001, err_msg='wechat %d' % resp.code)
             return None
-        resp_data = json.loads(resp.body)
+        resp_data = json.loads(resp.body.decode('utf8'))
         if resp_data.get('errcode'):
             self.send_response(None, *errinfo.wechat_map[int(resp_data.get('errcode'))])
             return None

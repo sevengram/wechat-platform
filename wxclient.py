@@ -1,24 +1,25 @@
 # -*- coding: utf-8 -*-
 
-import Cookie
 import io
 import json
 import logging
 import os
 import random
 import time
-import urllib
-import urlparse
-from PIL import Image
+import urllib.request
+import urllib.parse
+from http.cookies import SimpleCookie
 
 import tornado.gen
 import tornado.httpclient
 import tornado.ioloop
+from PIL import Image
 from bs4 import BeautifulSoup
 
 import errinfo
 import url
-from util import http, dtools, security
+from util import httputils, dtools, security
+from util.httputils import build_url
 from wxstorage import wechat_storage
 
 
@@ -38,7 +39,7 @@ def check_same(timestamp, content, mtype, user):
 def _parse_wechat_resp(resp):
     if resp.code != 200:
         return {'err_code': 1001}
-    resp_data = json.loads(resp.body)
+    resp_data = json.loads(resp.body.decode('utf8'))
     err_code = resp_data.get('errcode')
     if err_code:
         wechat_err = errinfo.wechat_map[int(err_code)]
@@ -49,7 +50,7 @@ def _parse_wechat_resp(resp):
 def _parse_mp_resp(resp):
     if resp.code != 200:
         return {'err_code': 7000}
-    resp_data = json.loads(resp.body)
+    resp_data = json.loads(resp.body.decode('utf8'))
     logging.info('mp response:%s', resp_data)
     try:
         if resp_data:
@@ -81,7 +82,7 @@ def _get_access_token(appid, refresh=False):
             })
     try:
         app_info = wechat_storage.get_app_info(appid=appid)
-        resp = yield http.get_dict(
+        resp = yield httputils.get_dict(
             url=url.wechat_basic_access_token,
             data={
                 'grant_type': 'client_credential',
@@ -101,20 +102,32 @@ def _get_access_token(appid, refresh=False):
 
 
 @tornado.gen.coroutine
-def _wechat_api_call(appid, fn, fn_url, fn_data, retry=0):
+def _wechat_api_call(method, appid, fn_url, fn_data=None, retry=0):
     token_result = yield _get_access_token(appid, refresh=(retry != 0))
     if token_result['err_code'] != 0:
         raise tornado.gen.Return(token_result)
+    token = token_result['data']['access_token']
     try:
-        resp = yield fn(
-            url=fn_url,
-            data=dict(fn_data, access_token=token_result['data']['access_token'])
-        )
+        if method == 'GET':
+            resp = yield httputils.get_dict(
+                url=fn_url,
+                data=dict(fn_data or {}, access_token=token)
+            )
+        elif method == 'POST':
+            resp = yield httputils.post_dict(
+                url=build_url(fn_url, {
+                    'access_token': token
+                }),
+                data=fn_data,
+                data_type='json'
+            )
+        else:
+            return
     except tornado.httpclient.HTTPError:
         raise tornado.gen.Return({'err_code': 1001})
     result = _parse_wechat_resp(resp)
     if result['err_code'] == 1004 and retry < 3:
-        result = yield _wechat_api_call(appid, fn, fn_url, fn_data, retry + 1)
+        result = yield _wechat_api_call(appid, fn_url, fn_data, retry + 1)
         raise tornado.gen.Return(result)
     else:
         raise tornado.gen.Return(result)
@@ -123,13 +136,32 @@ def _wechat_api_call(appid, fn, fn_url, fn_data, retry=0):
 @tornado.gen.coroutine
 def get_user_info(appid, openid):
     resp = yield _wechat_api_call(
+        method='GET',
         appid=appid,
-        fn=http.get_dict,
         fn_url=url.wechat_basic_userinfo,
         fn_data={
             'openid': openid,
             'lang': 'zh_CN'
         })
+    raise tornado.gen.Return(resp)
+
+
+@tornado.gen.coroutine
+def get_menu(appid):
+    resp = yield _wechat_api_call(
+        method='GET',
+        appid=appid,
+        fn_url=url.wechat_menu_get)
+    raise tornado.gen.Return(resp)
+
+
+@tornado.gen.coroutine
+def create_menu(appid, menu):
+    resp = yield _wechat_api_call(
+        method='POST',
+        appid=appid,
+        fn_url=url.wechat_menu_create,
+        fn_data=menu)
     raise tornado.gen.Return(resp)
 
 
@@ -165,7 +197,7 @@ _default_headers = {
     'Connection': 'keep-alive',
     'Origin': url.mp_base,
     'X-Requested-With': 'XMLHttpRequest',
-    'User-Agent': http.user_agent,
+    'User-Agent': httputils.user_agent,
     'Accept': '*/*',
     'Accept-Encoding': 'gzip,deflate,sdch',
     'Accept-Language': 'zh-CN,zh;q=0.8',
@@ -188,13 +220,13 @@ class MockBrowser(object):
     def _build_cookies(self, appid):
         if appid not in self.cookies:
             self._init_cookies(appid)
-        return ';'.join(['%s=%s' % (key, value) for key, value in self.cookies[appid].iteritems()])
+        return ';'.join(['%s=%s' % (key, value) for key, value in self.cookies[appid].items()])
 
     def _set_cookies(self, appid, headers):
         if appid not in self.cookies:
             self._init_cookies(appid)
         for sc in headers.get_list("Set-Cookie"):
-            c = Cookie.SimpleCookie(sc)
+            c = SimpleCookie(sc)
             for morsel in c.values():
                 if morsel.key not in ['data_bizuin', 'slave_user', 'bizuin']:
                     if morsel.value and morsel.value != 'EXPIRED':
@@ -209,7 +241,7 @@ class MockBrowser(object):
             'Cookie': self._build_cookies(appid),
             'Accept': kwargs.get('accept', 'application/json, text/javascript, */*; q=0.01'),
         })
-        resp = yield http.post_dict(url=post_url, data=data, headers=headers)
+        resp = yield httputils.post_dict(url=post_url, data=data, headers=headers)
         if resp.code == 200:
             self._set_cookies(appid, resp.headers)
         raise tornado.gen.Return(resp)
@@ -221,7 +253,7 @@ class MockBrowser(object):
             'Cookie': self._build_cookies(appid),
             'Content-Type': content_type,
         })
-        resp = yield http.post_dict(url=post_url, data=data, data_type='raw', headers=headers)
+        resp = yield httputils.post_dict(url=post_url, data=data, data_type='raw', headers=headers)
         if resp.code == 200:
             self._set_cookies(appid, resp.headers)
         raise tornado.gen.Return(resp)
@@ -233,7 +265,7 @@ class MockBrowser(object):
             'Cookie': self._build_cookies(appid),
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
         })
-        resp = yield http.get_dict(url=get_url, data=data, headers=headers)
+        resp = yield httputils.get_dict(url=get_url, data=data, headers=headers)
         if resp.code == 200:
             self._set_cookies(appid, resp.headers)
         raise tornado.gen.Return(resp)
@@ -281,7 +313,7 @@ class MockBrowser(object):
         result_data = result.get('data')
         self.tokens[appid] = {
             'last_login': time.time(),
-            'token': dict(urlparse.parse_qsl(result_data['redirect_url']))['token']
+            'token': dict(urllib.parse.parse_qsl(result_data['redirect_url']))['token']
         }
         logging.info('login success: %s', appid)
         raise tornado.gen.Return({
@@ -291,12 +323,12 @@ class MockBrowser(object):
 
     @tornado.gen.coroutine
     def _send_single_message(self, appid, fakeid, content):
-        post_url = http.build_url(url.mp_singlesend, {
+        post_url = httputils.build_url(url.mp_singlesend, {
             't': 'ajax-response',
             'f': 'json',
             'token': self.tokens[appid]['token'],
             'lang': 'zh_CN'})
-        referer_url = http.build_url(url.mp_singlesend_page, {
+        referer_url = httputils.build_url(url.mp_singlesend_page, {
             'tofakeid': fakeid,
             't': 'message/send',
             'action': 'index',
@@ -319,7 +351,7 @@ class MockBrowser(object):
 
     @tornado.gen.coroutine
     def _find_user(self, appid, timestamp, mtype, content, count=50, offset=0):
-        referer_url = http.build_url(url.mp_home, {
+        referer_url = httputils.build_url(url.mp_home, {
             't': 'home/index',
             'token': self.tokens[appid]['token'],
             'lang': 'zh_CN'})
@@ -335,14 +367,14 @@ class MockBrowser(object):
         if resp.code != 200:
             raise tornado.gen.Return({'err_code': 7000})
         users = None
-        ts = BeautifulSoup(resp.body).find_all('script', {'type': 'text/javascript', 'src': ''})
+        ts = BeautifulSoup(resp.body, 'lxml').find_all('script', {'type': 'text/javascript', 'src': ''})
         for t in ts:
             try:
                 te = t.text
                 if te.strip(' \t\r\n').startswith('wx.cgiData'):
                     s = te.index('[', te.index('msg_item'))
                     e = te.rindex(']', s, te.rindex('msg_item')) + 1
-                    users = json.loads(te[s:e], encoding='utf-8')
+                    users = json.loads(te[s:e])
                     break
             except (ValueError, IndexError):
                 pass
@@ -361,12 +393,12 @@ class MockBrowser(object):
 
     @tornado.gen.coroutine
     def _get_contact_info(self, appid, fakeid, msg_id):
-        post_url = http.build_url(url.mp_contact_info, {
+        post_url = httputils.build_url(url.mp_contact_info, {
             't': 'ajax-getcontactinfo',
             'fakeid': fakeid,
             'msg_id': msg_id,
             'lang': 'zh_CN'})
-        referer_url = http.build_url(url.mp_message, {
+        referer_url = httputils.build_url(url.mp_message, {
             't': 'message/list',
             'count': 30,
             'offset': 0,
@@ -387,7 +419,7 @@ class MockBrowser(object):
 
     @tornado.gen.coroutine
     def _get_ticket(self, appid):
-        referer = http.build_url(url.mp_appmsg, {
+        referer = httputils.build_url(url.mp_appmsg, {
             'begin': 0,
             'count': 10,
             't': 'media/appmsg_list',
@@ -410,7 +442,7 @@ class MockBrowser(object):
         if resp.code != 200:
             raise tornado.gen.Return({'err_code': 7000})
         ticket = None
-        ts = BeautifulSoup(resp.body).find_all('script', {'type': 'text/javascript', 'src': ''})
+        ts = BeautifulSoup(resp.body, 'lxml').find_all('script', {'type': 'text/javascript', 'src': ''})
         for t in ts:
             try:
                 te = t.text
@@ -430,7 +462,7 @@ class MockBrowser(object):
 
     @tornado.gen.coroutine
     def _upload_image(self, appid, ticket, picurl, filename, width=0):
-        img = Image.open(io.BytesIO(urllib.urlopen(picurl).read()))
+        img = Image.open(io.BytesIO(urllib.request.urlopen(picurl).read()))
         w, h = img.size
         nw = min(width, w) if width != 0 else w
         nh = int(float(nw * h) / w)
@@ -439,8 +471,7 @@ class MockBrowser(object):
         img.resize((nw, nh)).convert('RGB').save(fd, 'JPEG', quality=85)
         fd.close()
         fd = open(tmp_file, 'rb')
-        filename = filename.encode('utf8')
-        post_url = http.build_url(url.mp_upload, {
+        post_url = httputils.build_url(url.mp_upload, {
             'ticket_id': 'sevengram',
             'ticket': ticket,
             'f': 'json',
@@ -449,7 +480,7 @@ class MockBrowser(object):
             'writetype': 'doublewrite',
             'group_id': 1,
             'action': 'upload_material'})
-        referer = http.build_url(url.mp_appmsg, {
+        referer = httputils.build_url(url.mp_appmsg, {
             't': 'media/appmsg_edit',
             'action': 'edit',
             'type': '10',
@@ -457,7 +488,7 @@ class MockBrowser(object):
             'isNew': 1,
             'lang': 'zh_CN',
             'token': self.tokens[appid]['token']})
-        content_type, data = http.encode_multipart_formdata(
+        content_type, data = httputils.encode_multipart_formdata(
             fields={'Filename': filename,
                     'folder': '/cgi-bin/uploads',
                     'Upload': 'Submit Query'},
@@ -472,13 +503,13 @@ class MockBrowser(object):
 
     @tornado.gen.coroutine
     def _save_news(self, appid, title, content, digest, author, fileid, sourceurl):
-        post_url = http.build_url(url.mp_save_news, {
+        post_url = httputils.build_url(url.mp_save_news, {
             't': 'ajax-response',
             'sub': 'create',
             'type': '10',
             'token': self.tokens[appid]['token'],
             'lang': 'zh_CN'})
-        referer = http.build_url(url.mp_appmsg, {
+        referer = httputils.build_url(url.mp_appmsg, {
             't': 'media/appmsg_edit',
             'action': 'edit',
             'type': '10',
@@ -493,14 +524,14 @@ class MockBrowser(object):
                 'f': 'json',
                 'ajax': 1,
                 'type': 1,
-                'content0': content.encode('utf-8'),
+                'content0': content,
                 'count': 1,
                 'random': random.random(),
                 'AppMsgId': '',
                 'vid': '',
-                'title0': title.encode('utf-8'),
-                'digest0': digest.encode('utf-8'),
-                'author0': author.encode('utf-8'),
+                'title0': title,
+                'digest0': digest,
+                'author0': author,
                 'fileid0': fileid,
                 'show_cover_pic0': 1,
                 'sourceurl0': sourceurl
@@ -511,7 +542,7 @@ class MockBrowser(object):
 
     @tornado.gen.coroutine
     def _get_operation_seq(self, appid):
-        referer = http.build_url(url.mp_home, {
+        referer = httputils.build_url(url.mp_home, {
             't': 'home/index',
             'token': self.tokens[appid]['token'],
             'lang': 'zh_CN'})
@@ -526,7 +557,7 @@ class MockBrowser(object):
         if resp.code != 200:
             raise tornado.gen.Return({'err_code': 7000})
         seq = None
-        ts = BeautifulSoup(resp.body).find_all('script', {'type': 'text/javascript', 'src': ''})
+        ts = BeautifulSoup(resp.body, 'lxml').find_all('script', {'type': 'text/javascript', 'src': ''})
         for t in ts:
             try:
                 te = t.text
@@ -546,7 +577,7 @@ class MockBrowser(object):
 
     @tornado.gen.coroutine
     def _get_latest_news(self, appid):
-        referer = http.build_url(url.mp_home, {
+        referer = httputils.build_url(url.mp_home, {
             't': 'home/index',
             'token': self.tokens[appid]['token'],
             'lang': 'zh_CN'})
@@ -564,12 +595,12 @@ class MockBrowser(object):
         if resp.code != 200:
             raise tornado.gen.Return({'err_code': 7000})
         item = None
-        ts = BeautifulSoup(resp.body).find_all('script', {'type': 'text/javascript', 'src': ''})
+        ts = BeautifulSoup(resp.body, 'lxml').find_all('script', {'type': 'text/javascript', 'src': ''})
         for t in ts:
             try:
                 te = t.text
                 if te.strip(' \t\r\n').startswith('wx.cgiData'):
-                    item = json.loads(te[te.index('{'):te.rindex('}') + 1], encoding='utf-8')['item'][0]
+                    item = json.loads(te[te.index('{'):te.rindex('}') + 1])['item'][0]
                     del item['multi_item']
                     break
             except (ValueError, IndexError):
@@ -583,11 +614,11 @@ class MockBrowser(object):
 
     @tornado.gen.coroutine
     def _presend_multi_message(self, appid, appmsgid, times):
-        post_url = http.build_url(url.mp_multisend, {
+        post_url = httputils.build_url(url.mp_multisend, {
             'action': 'get_appmsg_copyright_stat',
             'token': self.tokens[appid]['token'],
             'lang': 'zh_CN'})
-        referer = http.build_url(url.mp_multisend_page, {
+        referer = httputils.build_url(url.mp_multisend_page, {
             't': 'mass/send',
             'lang': 'zh_CN',
             'token': self.tokens[appid]['token']})
@@ -608,11 +639,11 @@ class MockBrowser(object):
 
     @tornado.gen.coroutine
     def _send_multi_message(self, appid, appmsgid, operation_seq, groupid):
-        post_url = http.build_url(url.mp_multisend, {
+        post_url = httputils.build_url(url.mp_multisend, {
             't': 'ajax-response',
             'token': self.tokens[appid]['token'],
             'lang': 'zh_CN'})
-        referer = http.build_url(url.mp_multisend_page, {
+        referer = httputils.build_url(url.mp_multisend_page, {
             't': 'mass/send',
             'lang': 'zh_CN',
             'token': self.tokens[appid]['token']})

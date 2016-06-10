@@ -8,7 +8,7 @@ import tornado.gen
 import tornado.httpclient
 
 import wxclient
-from util import http, security, dtools
+from util import httputils, security, dtools
 from util.security import Prpcrypt, add_sign_wechat
 from util.web import BaseHandler
 from wxstorage import wechat_storage
@@ -51,11 +51,10 @@ def build_response(from_id, to_id, data):
 
 
 def encrypt_data(data, crypter, appid):
-    plain_xml = dtools.dict2xml(data)
-    data = {'encrypt': crypter.encrypt(plain_xml, appid)}
-    add_sign_wechat(data, key='wechat_platform')
+    encrypted = {'encrypt': crypter.encrypt(dtools.dict2xml(data), appid)}
+    add_sign_wechat(encrypted, key='wechat_platform')
     return dtools.transfer(
-        data,
+        encrypted,
         renames=[
             ('encrypt', 'Encrypt'),
             ('sign', 'MsgSignature'),
@@ -71,7 +70,7 @@ class WechatMsgHandler(BaseHandler):
     @tornado.gen.coroutine
     def prepare(self):
         if self.sign_check:
-            self.check_signature({k: v[0] for k, v in self.request.arguments.iteritems() if v},
+            self.check_signature({k: v[0] for k, v in self.request.arguments.items() if v},
                                  sign_key='wechat_platform',
                                  method='sha1')
 
@@ -82,9 +81,8 @@ class WechatMsgHandler(BaseHandler):
 
     @tornado.gen.coroutine
     def post(self):
-        post_args = dtools.xml2dict(self.request.body)
+        post_args = dtools.xml2dict(self.request.body.decode('utf8'))
         appinfo = self.storage.get_app_info(openid=post_args['ToUserName'])
-        # TODO: add appinfo check
         appid = appinfo['appid']
         crypter = None
         if appinfo['is_encrypted']:
@@ -116,7 +114,7 @@ class WechatMsgHandler(BaseHandler):
         site_info = self.storage.get_site_info(appinfo['siteid'])
         security.add_sign(req_data, site_info['sitekey'])
         try:
-            resp = yield http.post_dict(
+            resp = yield httputils.post_dict(
                 url=site_info['msg_notify_url'],
                 data=req_data)
         except tornado.httpclient.HTTPError:
@@ -127,7 +125,7 @@ class WechatMsgHandler(BaseHandler):
             raise tornado.gen.Return()
 
         try:
-            resp_data = json.loads(resp.body)
+            resp_data = json.loads(resp.body.decode('utf8'))
             if resp_data.get('err_code') == 0:
                 wx_resp = build_response(from_id=post_args['ToUserName'],
                                          to_id=post_args['FromUserName'],
@@ -158,7 +156,7 @@ class WechatMsgHandler(BaseHandler):
                 'event_type'):
             user_resp = yield wxclient.mock_browser.find_user(
                 appid=appid,
-                timestamp=long(req_data['msg_time']),
+                timestamp=int(req_data['msg_time']),
                 mtype=req_data['msg_type'],
                 content=req_data.get('content', '')
             )

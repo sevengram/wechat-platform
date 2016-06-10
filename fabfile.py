@@ -26,11 +26,11 @@ def ship(branch, commit):
     user_roles = ['wechat@%s' % level for level in level_map[branch]]
 
     # 0. Local jobs
-    print 'Start local jobs...'
+    print('Start local jobs...')
 
     if root_roles and user_roles:
         # 1. Pre-deploy
-        print 'Start deploying.....'
+        print('Start deploying.....')
 
         # 2. Deploy
         sync_result = execute(sync_repo, commit, code_dir, roles=user_roles)
@@ -39,42 +39,42 @@ def ship(branch, commit):
             reload_result = execute(reload_service, roles=root_roles)
             if check_all_success(reload_result):
                 if run_test():
-                    print 'Awesome!'
+                    print('Awesome!')
                     return_code = 0
                 else:
-                    print 'Fail to pass test!'
+                    print('Fail to pass test!')
                     return_code = 13
             else:
-                print 'Fail to reload service!'
+                print('Fail to reload service!')
                 return_code = 12
         else:
-            print 'Fail to sync code!'
+            print('Fail to sync code!')
             return_code = 11
 
         # 3. Post-deploy
         if return_code != 0:
-            print 'No good! Start rolling back!'
+            print('No good! Start rolling back!')
             # Rollback
             sync_result2 = {}
-            for host, info in sync_result.iteritems():
+            for host, info in sync_result.items():
                 if info['old_commit']:
                     sync_result2.update(execute(sync_repo, info['old_commit'], code_dir, host=host))
                 else:
-                    print 'No commit to rollback on %s' % host
+                    print('No commit to rollback on %s') % host
             if check_all_success(sync_result2):
                 # Restart service
                 reload_result = execute(reload_service, roles=root_roles)
                 if check_all_success(reload_result):
                     if run_test():
-                        print 'Rollback: OK!'
+                        print('Rollback: OK!')
                     else:
-                        print 'Rollback: Fail to pass test!'
+                        print('Rollback: Fail to pass test!')
                         return_code = 23
                 else:
-                    print 'Rollback: Fail to reload service!'
+                    print('Rollback: Fail to reload service!')
                     return_code = 22
             else:
-                print 'Rollback: Fail to sync code!'
+                print('Rollback: Fail to sync code!')
                 return_code = 21
     else:
         return_code = 0
@@ -86,7 +86,7 @@ def sync_repo(commit, directory):
         with settings(warn_only=True):
             r1 = run('git rev-parse HEAD')
             if r1.failed:
-                print 'Fail to parse HEAD!'
+                print('Fail to parse HEAD!')
                 return {'error': 1, 'old_commit': ''}
             r2 = run('git reset --hard && '
                      'git clean -fdx && '

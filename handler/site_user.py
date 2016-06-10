@@ -6,7 +6,7 @@ import tornado.httpclient
 import url
 import wxclient
 from handler.site_base import SiteBaseHandler
-from util import http, dtools
+from util import httputils, dtools
 
 user_attrs = [
     'uid',
@@ -54,7 +54,7 @@ class UserHandler(SiteBaseHandler):
         openid = self.get_argument('openid')
         if openid:
             res = yield wxclient.update_user_info(appid, openid)
-            if resp['err_code'] == 0:
+            if res['err_code'] == 0:
                 self.send_response(data=res['data'])
                 raise tornado.gen.Return()
 
@@ -67,7 +67,7 @@ class UserHandler(SiteBaseHandler):
                 'grant_type': 'authorization_code',
             }
             try:
-                resp1 = yield http.get_dict(url=url.wechat_oauth_access_token, data=req_data1)
+                resp1 = yield httputils.get_dict(url=url.wechat_oauth_access_token, data=req_data1)
             except tornado.httpclient.HTTPError:
                 self.send_response(err_code=1001)
                 raise tornado.gen.Return()
@@ -87,7 +87,7 @@ class UserHandler(SiteBaseHandler):
                         'lang': 'zh_CN'
                     }
                     try:
-                        resp2 = yield http.get_dict(url=url.wechat_oauth_userinfo, data=req_data2)
+                        resp2 = yield httputils.get_dict(url=url.wechat_oauth_userinfo, data=req_data2)
                     except tornado.httpclient.HTTPError:
                         self.send_response(err_code=1001)
                         raise tornado.gen.Return()

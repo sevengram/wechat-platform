@@ -7,7 +7,7 @@ import tornado.gen
 import tornado.httpclient
 
 import url
-from util import dtools, security, http
+from util import dtools, security, httputils
 from handler.site_base import SiteBaseHandler
 
 
@@ -59,7 +59,7 @@ class OrderHandler(SiteBaseHandler):
         security.add_sign(req_data, req_key)
 
         try:
-            resp = yield http.post_dict(url=url.mch_order_add, data=req_data, data_type='xml')
+            resp = yield httputils.post_dict(url=url.mch_order_add, data=req_data, data_type='xml')
         except tornado.httpclient.HTTPError:
             self.send_response(err_code=1001)
             raise tornado.gen.Return()
@@ -101,7 +101,7 @@ class OrderHandler(SiteBaseHandler):
         security.add_sign(req_data, req_key)
 
         try:
-            resp = yield http.post_dict(url=url.mch_order_query, data=req_data, data_type='xml')
+            resp = yield httputils.post_dict(url=url.mch_order_query, data=req_data, data_type='xml')
         except tornado.httpclient.HTTPError:
             self.send_response(err_code=1001)
             raise tornado.gen.Return()

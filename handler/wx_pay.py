@@ -7,7 +7,7 @@ import tornado.httpclient
 
 from util import dtools
 from util import security
-from util import http
+from util import httputils
 from util.web import BaseHandler
 from wxstorage import wechat_storage
 
@@ -47,7 +47,7 @@ class WechatPayHandler(BaseHandler):
         security.add_sign(req_data, req_key)
 
         try:
-            resp = yield http.post_dict(
+            resp = yield httputils.post_dict(
                 url=site_info['pay_notify_url'],
                 data=req_data)
         except tornado.httpclient.HTTPError:
@@ -56,7 +56,7 @@ class WechatPayHandler(BaseHandler):
 
         if resp.code == 200:
             try:
-                resp_data = json.loads(resp.body)
+                resp_data = json.loads(resp.body.decode('utf8'))
                 self.send_response(err_code=0 if resp_data.get('return_code') == 'SUCCESS' else 1)
             except ValueError:
                 self.send_response(err_code=9101)

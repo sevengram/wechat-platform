@@ -14,6 +14,10 @@ wechat_basic_access_token = wechat_api_base + "/cgi-bin/token"
 
 wechat_basic_userinfo = wechat_api_base + "/cgi-bin/user/info"
 
+wechat_menu_get = wechat_api_base + "/cgi-bin/menu/get"
+
+wechat_menu_create = wechat_api_base + "/cgi-bin/menu/create"
+
 wechat_oauth_access_token = wechat_api_base + "/sns/oauth2/access_token"
 
 wechat_oauth_userinfo = wechat_api_base + "/sns/userinfo"
