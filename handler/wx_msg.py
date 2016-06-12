@@ -70,7 +70,7 @@ class WechatMsgHandler(BaseHandler):
     @tornado.gen.coroutine
     def prepare(self):
         if self.sign_check:
-            self.check_signature({k: v[0] for k, v in self.request.arguments.items() if v},
+            self.check_signature({k: v[0].encode('utf8') for k, v in self.request.arguments.items() if v},
                                  sign_key='wechat_platform',
                                  method='sha1')
 

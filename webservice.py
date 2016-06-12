@@ -24,7 +24,8 @@ from handler.wx_msg import WechatMsgHandler
 from handler.wx_pay import WechatPayHandler
 
 if __name__ == '__main__':
-    debug = options.env == 'dev'
+    #debug = options.env == 'dev'
+    debug = False
     param = {'sign_check': not debug}
     application = tornado.web.Application(
         handlers=[

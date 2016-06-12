@@ -19,7 +19,7 @@ class SiteBaseHandler(BaseHandler):
         if self.sign_check:
             parts = self.request.path.split('/')
             key = self.storage.get_site_info(parts[parts.index('sites') + 1], select_key='sitekey')
-            self.check_signature({k: v[0] for k, v in self.request.arguments.items() if v},
+            self.check_signature({k: v[0].encode('utf8') for k, v in self.request.arguments.items() if v},
                                  sign_key=key, method='md5')
 
     def head(self, *args, **kwargs):
