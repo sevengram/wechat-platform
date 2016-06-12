@@ -17,3 +17,5 @@ wiki
 
 # Config files
 config/db.conf
+
+test.py
