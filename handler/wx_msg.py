@@ -82,6 +82,7 @@ class WechatMsgHandler(BaseHandler):
     @tornado.gen.coroutine
     def post(self):
         post_args = dtools.xml2dict(self.request.body.decode('utf8'))
+        logging.info(post_args)
         appinfo = self.storage.get_app_info(openid=post_args['ToUserName'])
         appid = appinfo['appid']
         crypter = None
