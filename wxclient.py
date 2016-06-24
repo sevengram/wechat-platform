@@ -107,6 +107,7 @@ def _wechat_api_call(method, appid, fn_url, fn_data=None, retry=0):
     if token_result['err_code'] != 0:
         raise tornado.gen.Return(token_result)
     token = token_result['data']['access_token']
+    logging.info('access_token: %s', token)
     try:
         if method == 'GET':
             resp = yield httputils.get_dict(

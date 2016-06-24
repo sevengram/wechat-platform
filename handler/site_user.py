@@ -51,14 +51,14 @@ class UserHandler(SiteBaseHandler):
             self.send_response(err_code=3201)
             raise tornado.gen.Return()
 
-        openid = self.get_argument('openid')
+        openid = self.get_argument('openid', '')
         if openid:
             res = yield wxclient.update_user_info(appid, openid)
             if res['err_code'] == 0:
                 self.send_response(data=res['data'])
                 raise tornado.gen.Return()
 
-        code = self.get_argument('code')
+        code = self.get_argument('code', '')
         if code:
             req_data1 = {
                 'code': code,
