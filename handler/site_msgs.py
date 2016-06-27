@@ -43,7 +43,7 @@ class MultiMsgsHandler(SiteBaseHandler):
             return
         seq = resp['data']['seq']
         for i in range(2):
-            resp = yield mock_browser.presend_multi_message(appid, appmsgid, i)
+            resp = yield mock_browser.presend_multi_message(appid, appmsgid, 1 - i)
             if resp['err_code'] != 0:
                 self.send_response(err_code=resp['err_code'], err_msg=resp.get('err_msg', ''))
                 return
